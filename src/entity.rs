@@ -202,6 +202,7 @@ pub(crate) struct Fire {
 }
 
 impl Fire {
+    /// Create a new fire for use at the start of the game. This function should only be called once.
     pub fn init() -> Self {
         Fire {
             burning_items: vec![
@@ -210,5 +211,21 @@ impl Fire {
                 BurningItem::new_already_burning(MediumStick, 0.5).unwrap(),
             ],
         }
+    }
+
+    /// Add a fresh, unburning item to the fire.
+    pub fn add_item(&mut self, item_type: ItemId) -> Result<(), BurnItemError> {
+        self.burning_items.push(BurningItem::new(item_type)?);
+
+        Ok(())
+    }
+
+    // It may be necessary to make this a fixed turn-based amount of time for the sake of checks like items extinguishing when they're burnt out. Otherwise, they may go negative and lead to weird consequences.
+    /// Pass time, and progress all items contained in the fire.
+    ///
+    /// # Parameters
+    /// * `time` - The amount of time to pass.
+    pub fn tick(time: f64) {
+        todo!()
     }
 }
