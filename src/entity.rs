@@ -152,8 +152,9 @@ pub(crate) struct BurningItem {
     item_type: ItemId,
     /// The amount of energy remaining before the item runs out of energy
     remaining_energy: f64,
-    ///
-    /// Once the item beings burning, it will not stop.
+    /// The amount of energy put into activating the fuel. When it gets at or above [Self::remaining_energy], the fuel will activate. [Some] if the fuel has yet to begin burning. [None] if the fuel has activated.
+    activation_progress: Option<f64>,
+    /// Whether the item has activated or not. Once the item beings burning, it will not stop. The item begins burning when [Self::activation_progress] reaches its [Self::remaining_energy].
     is_burning: bool,
 }
 
@@ -167,6 +168,7 @@ impl BurningItem {
         Ok(BurningItem {
             item_type,
             remaining_energy: burn_energy,
+            activation_progress: Some(0.0),
             is_burning: false,
         })
     }
@@ -183,6 +185,7 @@ impl BurningItem {
         Ok(BurningItem {
             item_type,
             remaining_energy: burn_energy * remaining_percentage,
+            activation_progress: None,
             is_burning: true,
         })
     }
@@ -199,7 +202,7 @@ pub(crate) struct Fire {
 }
 
 impl Fire {
-    pub fn new() -> Self {
+    pub fn init() -> Self {
         Fire {
             burning_items: vec![
                 BurningItem::new_already_burning(MediumStick, 0.5).unwrap(),
