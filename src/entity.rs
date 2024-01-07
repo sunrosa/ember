@@ -235,7 +235,7 @@ pub(crate) struct Fire {
     /// The items that are in the fire's inventory. This includes not-yet-burning items.
     items: Vec<BurningItem>,
     /// The amount of time to progress between ticks
-    tick_time: f64,
+    tick_resolution: f64,
     /// The current temperature of the fire. This will not change immediately toward the target temperature, but gradually.
     temperature: f64,
     /// Ambient temperature around the fire
@@ -252,7 +252,7 @@ impl Fire {
                 BurningItem::new_already_burning(MediumStick, 0.5).unwrap(),
                 BurningItem::new_already_burning(MediumStick, 0.5).unwrap(),
             ],
-            tick_time: 1.0,
+            tick_resolution: 1.0,
             temperature: 873.15,
             ambient_temperature: 295.15,
         }
@@ -268,7 +268,7 @@ impl Fire {
     /// Set the amount of time to pass between ticks. Higher resolution means less precision. Don't touch this function unless you know what you're doing.
     #[must_use]
     pub fn set_tick_resolution(mut self, tick_resolution: f64) -> Self {
-        self.tick_time = tick_resolution;
+        self.tick_resolution = tick_resolution;
 
         self
     }
@@ -283,9 +283,19 @@ impl Fire {
         output
     }
 
+    /// The current tick resolution of the fire
+    pub fn tick_resolution(&self) -> f64 {
+        self.tick_resolution
+    }
+
     /// The current temperature of the fire itself
     pub fn temperature(&self) -> f64 {
         self.temperature
+    }
+
+    /// The current ambient temperature of the fire itself
+    pub fn ambient_temperature(&self) -> f64 {
+        self.ambient_temperature
     }
 
     /// Pass time, and progress all items contained in the fire.
@@ -304,9 +314,10 @@ impl Fire {
             let target_temperature = self.target_temperature();
             let temperature_difference = target_temperature - self.temperature;
             self.temperature = self.temperature()
-                + ((temperature_difference / (0.024 * self.energy_remaining())) * self.tick_time);
+                + ((temperature_difference / (0.024 * self.energy_remaining()))
+                    * self.tick_resolution());
         } else {
-            self.temperature = self.ambient_temperature;
+            self.temperature = self.ambient_temperature();
         }
 
         self
@@ -322,11 +333,11 @@ impl Fire {
             } else if item.burned_state == BurnedState::Fresh
                 && self.temperature() >= item.item_type.minimum_activation_temperature().unwrap()
             {
-                self.ambient_temperature /* Ambient temperature plus... */
-                    + ((item.item_type.burn_temperature().unwrap() - self.ambient_temperature /* ...the amount above room temperature that the item burns... */)
+                self.ambient_temperature() /* Ambient temperature plus... */
+                    + ((item.item_type.burn_temperature().unwrap() - self.ambient_temperature() /* ...the amount above room temperature that the item burns... */)
                         * item.activation_percentage()) /* ...multiplied by its activation progress */
             } else {
-                self.ambient_temperature
+                self.ambient_temperature()
             };
 
             weighted_data.push((temperature, item.remaining_energy));
@@ -362,14 +373,14 @@ impl Fire {
         if self.temperature() >= item.item_type.minimum_activation_temperature().unwrap() {
             // Increase activation progress if the fire temperature is above the minimum activation temperature of the item.
             *item.activation_progress.as_mut().unwrap() +=
-                self.temperature() * 0.005 * self.tick_time;
+                self.temperature() * 0.005 * self.tick_resolution();
         } else {
             // Decay the item's activation progress if the fire temperature is below the minimum activation temperature of the item.
             *item.activation_progress.as_mut().unwrap() -=
-                ((item.item_type.burn_temperature().unwrap() - self.ambient_temperature)
+                ((item.item_type.burn_temperature().unwrap() - self.ambient_temperature())
                     * item.activation_percentage())
                     * 0.005
-                    * self.tick_time;
+                    * self.tick_resolution();
         }
 
         // If the item's activation progress has transcended its activation threshold (burn energy * activation coefficient), set the item to burning, and disable its activation progress.
@@ -389,7 +400,7 @@ impl Fire {
     fn burn_item_tick(&self, item: &BurningItem) -> BurningItem {
         let mut item = item.clone();
 
-        item.remaining_energy -= self.temperature() * 0.001 * self.tick_time;
+        item.remaining_energy -= self.temperature() * 0.001 * self.tick_resolution();
 
         if item.remaining_energy <= 0.0 {
             item.burned_state = BurnedState::Spent;
