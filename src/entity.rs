@@ -89,15 +89,15 @@ impl ItemId {
         }
     }
 
-    /// Get an item's burn temperature from static definitions, if it can burn at all. Returns [None] if the item cannot burn.
+    /// Get an item's burn temperature in degrees of kelvin from static definitions, if it can burn at all. Returns [None] if the item cannot burn.
     pub fn burn_temperature(&self) -> Option<f64> {
         match self {
-            Twig => Some(2.0),
-            SmallStick => Some(1.75),
-            MediumStick => Some(1.5),
-            LargeStick => Some(1.3),
-            Log => Some(1.0),
-            Leaf => Some(0.75),
+            Twig => Some(873.15),
+            SmallStick => Some(873.15),
+            MediumStick => Some(873.15),
+            LargeStick => Some(873.15),
+            Log => Some(873.15),
+            Leaf => Some(773.15),
         }
     }
 
@@ -198,7 +198,12 @@ impl BurningItem {
 /// * The player will be able to choose their sleep hours. If they choose to sleep at night, they will have to put more fuel into their fire, because nights are colder, however it is easier to find fuel during the day when the sun is up. On the contrary, days are brighter and hotter (and perhaps harder to sleep in), and thus less fuel will be required, but it will be harder to forage at night.
 #[derive(Debug, Clone)]
 pub(crate) struct Fire {
+    /// The items that are in the fire's inventory. This includes not-yet-burning items.
     burning_items: Vec<BurningItem>,
+    /// The amount of time to progress between ticks
+    tick_time: f64,
+    /// The current temperature of the fire. This will not change immediately toward the target temperature, but gradually.
+    temperature: f64,
 }
 
 impl Fire {
@@ -210,6 +215,8 @@ impl Fire {
                 BurningItem::new_already_burning(MediumStick, 0.5).unwrap(),
                 BurningItem::new_already_burning(MediumStick, 0.5).unwrap(),
             ],
+            tick_time: 1.0,
+            temperature: 873.15,
         }
     }
 
@@ -220,12 +227,19 @@ impl Fire {
         Ok(())
     }
 
-    // It may be necessary to make this a fixed turn-based amount of time for the sake of checks like items extinguishing when they're burnt out. Otherwise, they may go negative and lead to weird consequences.
+    /// Set the amount of time to pass between ticks. Higher resolution means less precision. Don't touch this function unless you know what you're doing.
+    pub fn set_tick_resolution(&mut self, tick_resolution: f64) {
+        self.tick_time = tick_resolution;
+    }
+
     /// Pass time, and progress all items contained in the fire.
-    ///
-    /// # Parameters
-    /// * `time` - The amount of time to pass.
-    pub fn tick(time: f64) {
+    pub fn tick() {
         todo!()
+    }
+
+    /// Update the temperature of the fire for one tick, depending on [Self::tick_time]. The temperature will jump rapidly toward the target when it's far from the it, but be asymptotic toward it as it gets close.
+    pub fn tick_temperature(&mut self, target_temperature: f64) {
+        let temperature_difference = target_temperature - self.temperature;
+        self.temperature = self.temperature + ((temperature_difference / 24.0) * self.tick_time);
     }
 }
