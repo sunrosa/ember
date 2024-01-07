@@ -238,7 +238,7 @@ impl Fire {
     }
 
     /// Update the temperature of the fire for one tick, depending on [Self::tick_time]. The temperature will jump rapidly toward the target when it's far from the it, but be asymptotic toward it as it gets close.
-    pub fn tick_temperature(&mut self, target_temperature: f64) {
+    fn tick_temperature(&mut self, target_temperature: f64) {
         let temperature_difference = target_temperature - self.temperature;
         self.temperature = self.temperature + ((temperature_difference / 24.0) * self.tick_time);
     }
