@@ -131,8 +131,10 @@ impl Item {
     }
 }
 
+/// An error thrown when trying to construct a [BurningItem].
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum BurnItemError {
+    /// The item in question is not flammable (or simply lacks needed burn properties in static definitions).
     NotFlammable,
 }
 
@@ -143,9 +145,12 @@ pub(crate) struct BurningItem {
     item_type: Item,
     /// The amount of energy remaining before the item runs out of energy
     remaining_energy: f64,
+    /// Once the item beings burning, it will not stop.
+    is_burning: bool,
 }
 
 impl BurningItem {
+    /// Create a new item that has not yet started to burn, and has full remaining percentage.
     pub fn new(item_type: Item) -> Result<Self, BurnItemError> {
         let Some(burn_energy) = item_type.burn_energy() else {
             return Err(BurnItemError::NotFlammable);
@@ -154,12 +159,29 @@ impl BurningItem {
         Ok(BurningItem {
             item_type,
             remaining_energy: burn_energy,
+            is_burning: false,
+        })
+    }
+
+    /// Create a new item that is already burning, and has a remaining percentage of energy between 0.0 and 1.0. This is used to construct the initial fire when the player begins the game.
+    pub fn new_already_burning(
+        item_type: Item,
+        remaining_percentage: f64,
+    ) -> Result<Self, BurnItemError> {
+        let Some(burn_energy) = item_type.burn_energy() else {
+            return Err(BurnItemError::NotFlammable);
+        };
+
+        Ok(BurningItem {
+            item_type,
+            remaining_energy: burn_energy * remaining_percentage,
+            is_burning: true,
         })
     }
 }
 
 /// # Design
-/// The fire will be maintained solely by fuel the player throws in to keep it alive, including while asleep. Fuel will be the primary resource for survival in the game. Fuels will have different burn-temperatures (thus burn-speeds) and available energies. Low-temperature, high-energy fuel will have to be thrown in before the player goes to sleep for the night. Fuels will have activation temperatures that will have to be met for a certain duration before they will start burning on their own. For example, kindling like twigs will light almost immediately, while logs will require high temperatures for long durations before they will begin burning themselves. Once a fuel begins burning, it cannot be stopped (at least for this version). The fire will have a list of items, like the player's inventory, and their burn information will be stored and managed there. A fire will be as hot as the total remaining burn energy of items burning with a coefficient to each of their burn temperatures. Items will burn faster if they are in a hotter fire.
+/// The fire will be maintained solely by fuel the player throws in to keep it alive, continuing to burn while they are asleep. Fuel will be the primary resource for survival in the game. Fuels will have different burn-temperatures (thus burn-speeds) and available energies. Low-temperature, high-energy fuel will have to be thrown in before the player goes to sleep for the night. Fuels will have activation temperatures that will have to be met for a certain duration before they will start burning on their own. For example, kindling like twigs will light almost immediately, while logs will require high temperatures for long durations before they will begin burning themselves. Once a fuel begins burning, it cannot be stopped (at least for this version). The fire will have a list of items, like the player's inventory, and their burn information will be stored and managed there. A fire will be as hot as the total remaining burn energy of items burning with a coefficient to each of their burn temperatures. Items will burn faster if they are in a hotter fire.
 ///
 /// # Ideas
 /// * The player will be able to choose their sleep hours. If they choose to sleep at night, they will have to put more fuel into their fire, because nights are colder, however it is easier to find fuel during the day when the sun is up. On the contrary, days are brighter and hotter (and perhaps harder to sleep in), and thus less fuel will be required, but it will be harder to forage at night.
@@ -172,9 +194,9 @@ impl Fire {
     pub fn new() -> Self {
         Fire {
             burning_items: vec![
-                BurningItem::new(MediumStick).unwrap(),
-                BurningItem::new(MediumStick).unwrap(),
-                BurningItem::new(MediumStick).unwrap(),
+                BurningItem::new_already_burning(MediumStick, 0.5).unwrap(),
+                BurningItem::new_already_burning(MediumStick, 0.5).unwrap(),
+                BurningItem::new_already_burning(MediumStick, 0.5).unwrap(),
             ],
         }
     }
