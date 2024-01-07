@@ -329,15 +329,18 @@ impl Fire {
     fn tick_items(&mut self) {
         // The current temperature of the fire.
         let fire_temperature = self.temperature();
-        // The current tick time (resolution) of the fire.
-        let tick_time = self.tick_time;
 
         // Modify items.
         for (i, item) in self.items.iter_mut().enumerate() {
             if item.burned_state == BurnedState::Fresh {
-                Self::heat_item_tick(item, fire_temperature, self.ambient_temperature, tick_time);
+                Self::heat_item_tick(
+                    item,
+                    fire_temperature,
+                    self.ambient_temperature,
+                    self.tick_time,
+                );
             } else if item.burned_state == BurnedState::Burning {
-                Self::burn_item_tick(item, fire_temperature, tick_time)
+                Self::burn_item_tick(item, fire_temperature, self.tick_time)
             }
         }
 
@@ -375,7 +378,7 @@ impl Fire {
         }
     }
 
-    /// Tick a burning item. Returns true if the item has extinguished and is spent.
+    /// Tick a burning item.
     fn burn_item_tick(item: &mut BurningItem, fire_temperature: f64, tick_time: f64) {
         item.remaining_energy -= fire_temperature * 0.001 * tick_time;
 
