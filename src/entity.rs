@@ -2,6 +2,11 @@ use std::collections::HashMap;
 
 use ItemId::*;
 
+use crate::math::weighted_mean;
+
+/// Room temperature in degrees of kelvin
+const ROOM_TEMP: f64 = 295.15;
+
 /// The player that plays the game
 #[non_exhaustive]
 #[derive(Debug, Clone)]
@@ -241,5 +246,53 @@ impl Fire {
     fn tick_temperature(&mut self, target_temperature: f64) {
         let temperature_difference = target_temperature - self.temperature;
         self.temperature = self.temperature + ((temperature_difference / 24.0) * self.tick_time);
+    }
+
+    /// The temperature the fire would be burning at, dependent on its current items, if it had no thermal mass.
+    fn target_temperature(&self) -> f64 {
+        let mut weighted_data: Vec<(f64, f64)> = Vec::new();
+
+        for item in &self.burning_items {
+            let temperature = if item.is_burning {
+                item.item_type.burn_temperature().unwrap()
+            } else {
+                ROOM_TEMP /* Room temperature plus... */
+                    + ((item.item_type.burn_temperature().unwrap() - ROOM_TEMP /* ...the amount above room temperature that the item burns... */)
+                        * item.activation_progress.unwrap()) /* ...multiplied by its activation progress */
+            };
+
+            weighted_data.push((temperature, item.remaining_energy));
+        }
+
+        weighted_mean(weighted_data)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use assert_approx_eq::assert_approx_eq;
+
+    #[test]
+    fn target_temperature_0() {
+        assert_eq!(Fire::init().target_temperature(), 873.15);
+    }
+
+    #[test]
+    fn target_temperature_1() {
+        let mut fire = Fire::init();
+        fire.add_item(Twig).unwrap();
+        fire.add_item(Twig).unwrap();
+        fire.add_item(Twig).unwrap();
+        fire.add_item(Twig).unwrap();
+        assert_approx_eq!(fire.target_temperature(), 858.137012);
+    }
+
+    #[test]
+    fn target_temperature_2() {
+        let mut fire = Fire::init();
+        fire.add_item(Log).unwrap();
+        assert_approx_eq!(fire.target_temperature(), 428.534615)
     }
 }
