@@ -115,6 +115,17 @@ impl ItemId {
         }
     }
 
+    pub fn minimum_activation_temperature(&self) -> Option<f64> {
+        match self {
+            Twig => Some(533.15),
+            SmallStick => Some(533.15),
+            MediumStick => Some(533.15),
+            LargeStick => Some(533.15),
+            Log => Some(533.15),
+            Leaf => Some(673.15),
+        }
+    }
+
     /// Get an item's chance to hit an enemy when used as a weapon from static definitions. Returns [None] if the item could not be used as a weapon.
     pub fn hit_chance(&self) -> Option<f64> {
         match self {
@@ -314,7 +325,7 @@ impl Fire {
         // Modify items.
         for (i, item) in self.items.iter_mut().enumerate() {
             if item.burned_state == BurnedState::Fresh {
-                Self::heat_item_tick(item, fire_temperature, tick_time);
+                Self::heat_item_tick(item, fire_temperature, self.ambient_temperature, tick_time);
             } else if item.burned_state == BurnedState::Burning {
                 Self::burn_item_tick(item, fire_temperature, tick_time)
             }
@@ -325,13 +336,26 @@ impl Fire {
     }
 
     /// Tick an unburning item.
-    fn heat_item_tick(item: &mut BurningItem, fire_temperature: f64, tick_time: f64) {
-        *item.activation_progress.as_mut().unwrap() += fire_temperature * 0.001 * tick_time;
+    fn heat_item_tick(
+        item: &mut BurningItem,
+        fire_temperature: f64,
+        ambient_temperature: f64,
+        tick_time: f64,
+    ) {
+        if fire_temperature >= item.item_type.minimum_activation_temperature().unwrap() {
+            // Increase activation progress if the fire temperature is above the minimum activation temperature of the item.
+            *item.activation_progress.as_mut().unwrap() += fire_temperature * 0.001 * tick_time;
+        } else {
+            // Decay the item's activation progress if the fire temperature is below the minimum activation temperature of the item.
+            *item.activation_progress.as_mut().unwrap() -=
+                (fire_temperature - ambient_temperature) * 0.001 * tick_time;
+        }
 
         // If the item's activation progress has transcended its activation threshold (burn energy * activation coefficient), set the item to burning, and disable its activation progress.
         if item.activation_progress.unwrap()
             >= item.item_type.burn_energy().unwrap()
                 * item.item_type.activation_coefficient().unwrap()
+            && fire_temperature >= item.item_type.minimum_activation_temperature().unwrap()
         {
             item.activation_progress = None;
             item.burned_state = BurnedState::Burning;
