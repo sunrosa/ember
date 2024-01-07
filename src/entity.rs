@@ -62,7 +62,8 @@ pub(crate) enum ItemId {
     SmallStick,
     MediumStick,
     LargeStick,
-    Log,
+    MediumLog,
+    LargeLog,
     Leaf,
 }
 
@@ -74,7 +75,8 @@ impl ItemId {
             SmallStick => 500.0,
             MediumStick => 1000.0,
             LargeStick => 2000.0,
-            Log => 5000.0,
+            MediumLog => 3500.0,
+            LargeLog => 5000.0,
             Leaf => 10.0,
         }
     }
@@ -86,7 +88,8 @@ impl ItemId {
             SmallStick => Some(500.0),
             MediumStick => Some(1000.0),
             LargeStick => Some(2000.0),
-            Log => Some(5000.0),
+            MediumLog => Some(3500.0),
+            LargeLog => Some(5000.0),
             Leaf => Some(10.0),
         }
     }
@@ -98,7 +101,8 @@ impl ItemId {
             SmallStick => Some(873.15),
             MediumStick => Some(873.15),
             LargeStick => Some(873.15),
-            Log => Some(873.15),
+            MediumLog => Some(873.15),
+            LargeLog => Some(873.15),
             Leaf => Some(773.15),
         }
     }
@@ -110,7 +114,8 @@ impl ItemId {
             SmallStick => Some(1.0),
             MediumStick => Some(1.0),
             LargeStick => Some(1.0),
-            Log => Some(1.0),
+            MediumLog => Some(1.0),
+            LargeLog => Some(1.0),
             Leaf => Some(3.0),
         }
     }
@@ -121,7 +126,8 @@ impl ItemId {
             SmallStick => Some(533.15),
             MediumStick => Some(533.15),
             LargeStick => Some(533.15),
-            Log => Some(533.15),
+            MediumLog => Some(533.15),
+            LargeLog => Some(533.15),
             Leaf => Some(673.15),
         }
     }
@@ -133,7 +139,8 @@ impl ItemId {
             SmallStick => Some(0.35),
             MediumStick => Some(0.4),
             LargeStick => Some(0.5),
-            Log => Some(0.2),
+            MediumLog => Some(0.3),
+            LargeLog => Some(0.2),
             Leaf => None,
         }
     }
@@ -145,7 +152,8 @@ impl ItemId {
             SmallStick => Some((2.0, 4.0)),
             MediumStick => Some((4.0, 6.0)),
             LargeStick => Some((8.0, 15.0)),
-            Log => Some((8.0, 20.0)),
+            MediumLog => Some((6.0, 17.5)),
+            LargeLog => Some((8.0, 20.0)),
             Leaf => None,
         }
     }
@@ -301,12 +309,14 @@ impl Fire {
         for item in &self.items {
             let temperature = if item.burned_state == BurnedState::Burning {
                 item.item_type.burn_temperature().unwrap()
-            } else if item.burned_state == BurnedState::Fresh {
+            } else if item.burned_state == BurnedState::Fresh
+                && self.temperature() >= item.item_type.minimum_activation_temperature().unwrap()
+            {
                 self.ambient_temperature /* Ambient temperature plus... */
                     + ((item.item_type.burn_temperature().unwrap() - self.ambient_temperature /* ...the amount above room temperature that the item burns... */)
                         * item.activation_percentage()) /* ...multiplied by its activation progress */
             } else {
-                unreachable!("The item should not have reached this function in a Spent state.");
+                self.ambient_temperature
             };
 
             weighted_data.push((temperature, item.remaining_energy));
@@ -344,11 +354,14 @@ impl Fire {
     ) {
         if fire_temperature >= item.item_type.minimum_activation_temperature().unwrap() {
             // Increase activation progress if the fire temperature is above the minimum activation temperature of the item.
-            *item.activation_progress.as_mut().unwrap() += fire_temperature * 0.001 * tick_time;
+            *item.activation_progress.as_mut().unwrap() += fire_temperature * 0.005 * tick_time;
         } else {
             // Decay the item's activation progress if the fire temperature is below the minimum activation temperature of the item.
             *item.activation_progress.as_mut().unwrap() -=
-                (fire_temperature - ambient_temperature) * 0.001 * tick_time;
+                ((item.item_type.burn_temperature().unwrap() - ambient_temperature)
+                    * item.activation_percentage())
+                    * 0.005
+                    * tick_time;
         }
 
         // If the item's activation progress has transcended its activation threshold (burn energy * activation coefficient), set the item to burning, and disable its activation progress.
@@ -382,7 +395,7 @@ mod test {
     #[test]
     fn tick_temperature() {
         let mut fire = Fire::init();
-        fire.add_item(Log).unwrap();
+        fire.add_item(LargeLog).unwrap();
         for i in 0..20 {
             match i {
                 0 => assert_approx_eq!(fire.temperature(), 873.15),
@@ -414,7 +427,7 @@ mod test {
     #[test]
     fn target_temperature_2() {
         let mut fire = Fire::init();
-        fire.add_item(Log).unwrap();
+        fire.add_item(LargeLog).unwrap();
         assert_approx_eq!(fire.target_temperature(), 428.534615)
     }
 }

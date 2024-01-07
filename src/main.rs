@@ -7,11 +7,15 @@ mod math;
 
 fn main() {
     let mut fire = Fire::init();
-    fire.add_item(ItemId::Log).unwrap();
-    fire.set_tick_resolution(10.0);
+    fire.add_item(ItemId::MediumLog).unwrap();
+    fire.set_tick_resolution(1.0);
 
-    for i in 0..1000 {
-        if i % 20 == 0 {
+    for i in 0..10000 {
+        if i == 5000 {
+            fire.add_item(ItemId::MediumLog).unwrap();
+        }
+
+        if i % 25 == 0 {
             println!("{fire:?}");
         }
 
