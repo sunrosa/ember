@@ -4,9 +4,6 @@ use ItemId::*;
 
 use crate::math::weighted_mean;
 
-/// Room temperature in degrees of kelvin
-const ROOM_TEMP: f64 = 295.15;
-
 /// The player that plays the game
 #[non_exhaustive]
 #[derive(Debug, Clone)]
@@ -209,6 +206,8 @@ pub(crate) struct Fire {
     tick_time: f64,
     /// The current temperature of the fire. This will not change immediately toward the target temperature, but gradually.
     temperature: f64,
+    /// Ambient temperature around the fire
+    ambient_temperature: f64,
 }
 
 impl Fire {
@@ -222,6 +221,7 @@ impl Fire {
             ],
             tick_time: 1.0,
             temperature: 873.15,
+            ambient_temperature: 295.15,
         }
     }
 
@@ -238,17 +238,37 @@ impl Fire {
     }
 
     /// Pass time, and progress all items contained in the fire.
-    pub fn tick() {
-        todo!()
+    pub fn tick(&mut self) {
+        self.tick_temperature();
     }
 
-    /// Update the temperature of the fire for one tick, depending on [Self::tick_time]. The temperature will jump rapidly toward the target when it's far from the it, but be asymptotic toward it as it gets close.
-    fn tick_temperature(&mut self, target_temperature: f64) {
-        let temperature_difference = target_temperature - self.temperature;
-        self.temperature = self.temperature + ((temperature_difference / 24.0) * self.tick_time);
+    /// The total energy remaining in the fire. This includes both burning and unburning items.
+    pub fn energy_remaining(&self) -> f64 {
+        let mut output = 0.0;
+        for item in &self.burning_items {
+            output += item.remaining_energy;
+        }
+
+        output
     }
 
-    /// The temperature the fire would be burning at, dependent on its current items, if it had no thermal mass.
+    pub fn temperature(&self) -> f64 {
+        self.temperature
+    }
+
+    /// Update the temperature of the entire fire for one tick, depending on [Self::tick_time]. The temperature will jump rapidly toward the target when it's far from the it, but be asymptotic toward it as it gets close. If the number of burning items becomes zero, set the fire's temperature to the ambient temperature.
+    fn tick_temperature(&mut self) {
+        if self.burning_items.len() != 0 {
+            let target_temperature = self.target_temperature();
+            let temperature_difference = target_temperature - self.temperature;
+            self.temperature = self.temperature
+                + ((temperature_difference / (0.0024 * self.energy_remaining())) * self.tick_time);
+        } else {
+            self.temperature = self.ambient_temperature;
+        }
+    }
+
+    /// The temperature the entire fire would be burning at, dependent on its current items, if it had no thermal intertia. This is the target that the fire will trend toward in its inertia calculation in [Self::tick_temperature()].
     fn target_temperature(&self) -> f64 {
         let mut weighted_data: Vec<(f64, f64)> = Vec::new();
 
@@ -256,8 +276,8 @@ impl Fire {
             let temperature = if item.is_burning {
                 item.item_type.burn_temperature().unwrap()
             } else {
-                ROOM_TEMP /* Room temperature plus... */
-                    + ((item.item_type.burn_temperature().unwrap() - ROOM_TEMP /* ...the amount above room temperature that the item burns... */)
+                self.ambient_temperature /* Ambient temperature plus... */
+                    + ((item.item_type.burn_temperature().unwrap() - self.ambient_temperature /* ...the amount above room temperature that the item burns... */)
                         * item.activation_progress.unwrap()) /* ...multiplied by its activation progress */
             };
 
@@ -273,6 +293,23 @@ mod test {
     use super::*;
 
     use assert_approx_eq::assert_approx_eq;
+
+    #[test]
+    fn tick_temperature() {
+        let mut fire = Fire::init();
+        fire.add_item(Log).unwrap();
+        for i in 0..20 {
+            match i {
+                0 => assert_approx_eq!(fire.temperature(), 873.15),
+                4 => assert_approx_eq!(fire.temperature(), 769.647022),
+                9 => assert_approx_eq!(fire.temperature(), 673.462822),
+                14 => assert_approx_eq!(fire.temperature(), 604.399888),
+                19 => assert_approx_eq!(fire.temperature(), 554.810778),
+                _ => {}
+            }
+            fire.tick_temperature();
+        }
+    }
 
     #[test]
     fn target_temperature_0() {
