@@ -147,6 +147,13 @@ pub(crate) enum BurnItemError {
     NotFlammable,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BurnedState {
+    Fresh,
+    Burning,
+    Spent,
+}
+
 /// An item that is burning (or is about to be burning) in a fire.
 #[derive(Debug, Clone)]
 pub(crate) struct BurningItem {
@@ -157,7 +164,7 @@ pub(crate) struct BurningItem {
     /// The amount of energy put into activating the fuel. When it gets at or above [Self::remaining_energy], the fuel will activate. [Some] if the fuel has yet to begin burning. [None] if the fuel has activated.
     activation_progress: Option<f64>,
     /// Whether the item has activated or not. Once the item beings burning, it will not stop. The item begins burning when [Self::activation_progress] reaches its [Self::remaining_energy].
-    is_burning: bool,
+    burned_state: BurnedState,
 }
 
 impl BurningItem {
@@ -171,7 +178,7 @@ impl BurningItem {
             item_type,
             remaining_energy: burn_energy,
             activation_progress: Some(0.0),
-            is_burning: false,
+            burned_state: BurnedState::Fresh,
         })
     }
 
@@ -188,8 +195,14 @@ impl BurningItem {
             item_type,
             remaining_energy: burn_energy * remaining_percentage,
             activation_progress: None,
-            is_burning: true,
+            burned_state: BurnedState::Burning,
         })
+    }
+
+    pub fn activation_percentage(&self) -> f64 {
+        self.activation_progress.unwrap()
+            / (self.item_type.burn_energy().unwrap()
+                * self.item_type.activation_coefficient().unwrap())
     }
 }
 
@@ -275,12 +288,14 @@ impl Fire {
         let mut weighted_data: Vec<(f64, f64)> = Vec::new();
 
         for item in &self.items {
-            let temperature = if item.is_burning {
+            let temperature = if item.burned_state == BurnedState::Burning {
                 item.item_type.burn_temperature().unwrap()
-            } else {
+            } else if item.burned_state == BurnedState::Fresh {
                 self.ambient_temperature /* Ambient temperature plus... */
                     + ((item.item_type.burn_temperature().unwrap() - self.ambient_temperature /* ...the amount above room temperature that the item burns... */)
-                        * item.activation_progress.unwrap()) /* ...multiplied by its activation progress */
+                        * item.activation_percentage()) /* ...multiplied by its activation progress */
+            } else {
+                unreachable!("The item should not have reached this function in a Spent state.");
             };
 
             weighted_data.push((temperature, item.remaining_energy));
@@ -295,24 +310,18 @@ impl Fire {
         let fire_temperature = self.temperature();
         // The current tick time (resolution) of the fire.
         let tick_time = self.tick_time;
-        // The indices of the items that have burned out completely
-        let mut expended_indices: Vec<usize> = Vec::new();
 
         // Modify items.
         for (i, item) in self.items.iter_mut().enumerate() {
-            if !item.is_burning {
+            if item.burned_state == BurnedState::Fresh {
                 Self::heat_item_tick(item, fire_temperature, tick_time);
-            } else {
-                if Self::burn_item_tick(item, fire_temperature, tick_time) {
-                    expended_indices.push(i);
-                }
+            } else if item.burned_state == BurnedState::Burning {
+                Self::burn_item_tick(item, fire_temperature, tick_time)
             }
         }
 
-        // Remove all spent items from the list.
-        for i in expended_indices {
-            self.items.remove(i);
-        }
+        // Delete items that have been spent.
+        self.items.retain(|x| x.burned_state != BurnedState::Spent);
     }
 
     /// Tick an unburning item.
@@ -325,21 +334,18 @@ impl Fire {
                 * item.item_type.activation_coefficient().unwrap()
         {
             item.activation_progress = None;
-            item.is_burning = true;
+            item.burned_state = BurnedState::Burning;
         }
     }
 
     /// Tick a burning item. Returns true if the item has extinguished and is spent.
-    fn burn_item_tick(item: &mut BurningItem, fire_temperature: f64, tick_time: f64) -> bool {
+    fn burn_item_tick(item: &mut BurningItem, fire_temperature: f64, tick_time: f64) {
         item.remaining_energy -= fire_temperature * 0.001 * tick_time;
 
         if item.remaining_energy <= 0.0 {
-            item.is_burning = false;
+            item.burned_state = BurnedState::Spent;
             item.remaining_energy = 0.0;
-            return true;
         }
-
-        false
     }
 }
 
