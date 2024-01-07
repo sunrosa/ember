@@ -47,49 +47,55 @@ pub(crate) struct Inventory {
 /// Static definition for all item types in the game
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Item {
+    Twig,
     SmallStick,
     MediumStick,
     LargeStick,
     Log,
 }
 
-impl Into<ItemData> for Item {
-    /// Calls Item::new() in order to fetch the item from static item definitions
-    fn into(self) -> ItemData {
-        ItemData::new(self)
+impl Item {
+    /// Get an item's mass in grams from static definitions.
+    pub fn mass(&self) -> f64 {
+        match self {
+            Twig => 10.0,
+            SmallStick => 500.0,
+            MediumStick => 1000.0,
+            LargeStick => 2000.0,
+            Log => 5000.0,
+        }
     }
-}
 
-/// A physical in-game item's data. Use this type to grab the actual data of the item. If you're simply trying to store the item in memory, use [Item]. For now, this is purely internal. Accesses to an item's data can be done through [Item].
-#[non_exhaustive]
-#[derive(Debug, Clone)]
-struct ItemData {
-    /// The item's type
-    item_type: Item,
-    /// The item's mass in grams
-    mass: f64,
-}
+    /// Get an item's total burn energy for keeping your fire alive.
+    pub fn energy(&self) -> f64 {
+        match self {
+            Twig => 10.0,
+            SmallStick => 500.0,
+            MediumStick => 1000.0,
+            LargeStick => 2000.0,
+            Log => 5000.0,
+        }
+    }
 
-impl ItemData {
-    /// Get a new item from preset item definitions.
-    pub fn new(item_type: Item) -> Self {
-        match item_type {
-            SmallStick => Self {
-                item_type: SmallStick,
-                mass: 500.0,
-            },
-            MediumStick => Self {
-                item_type: MediumStick,
-                mass: 1000.0,
-            },
-            LargeStick => Self {
-                item_type: LargeStick,
-                mass: 2000.0,
-            },
-            Log => Self {
-                item_type: Log,
-                mass: 5000.0,
-            },
+    /// Get an item's chance to hit an enemy when used as a weapon from static definitions.
+    pub fn hit_chance(&self) -> f64 {
+        match self {
+            Twig => 0.10,
+            SmallStick => 0.35,
+            MediumStick => 0.4,
+            LargeStick => 0.5,
+            Log => 0.2,
+        }
+    }
+
+    /// Get an item's hit damage range from static definitions.
+    pub fn hit_damage(&self) -> (f64, f64) {
+        match self {
+            Twig => (0.05, 0.10),
+            SmallStick => (2.0, 4.0),
+            MediumStick => (4.0, 6.0),
+            LargeStick => (8.0, 15.0),
+            Log => (8.0, 20.0),
         }
     }
 }
