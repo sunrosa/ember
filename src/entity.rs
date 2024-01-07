@@ -244,6 +244,7 @@ pub(crate) struct Fire {
 
 impl Fire {
     /// Create a new fire for use at the start of the game. This function should only be called once.
+    #[must_use]
     pub fn init() -> Self {
         Fire {
             items: vec![
@@ -258,15 +259,18 @@ impl Fire {
     }
 
     /// Add a fresh, unburning item to the fire.
-    pub fn add_item(&mut self, item_type: ItemId) -> Result<(), BurnItemError> {
+    pub fn add_item(mut self, item_type: ItemId) -> Result<Self, BurnItemError> {
         self.items.push(BurningItem::new(item_type)?);
 
-        Ok(())
+        Ok(self)
     }
 
     /// Set the amount of time to pass between ticks. Higher resolution means less precision. Don't touch this function unless you know what you're doing.
-    pub fn set_tick_resolution(&mut self, tick_resolution: f64) {
+    #[must_use]
+    pub fn set_tick_resolution(mut self, tick_resolution: f64) -> Self {
         self.tick_time = tick_resolution;
+
+        self
     }
 
     /// The total energy remaining in the fire. This includes both burning and unburning items.
@@ -285,21 +289,27 @@ impl Fire {
     }
 
     /// Pass time, and progress all items contained in the fire.
-    pub fn tick(&mut self) {
-        self.tick_items();
-        self.tick_temperature();
+    #[must_use]
+    pub fn tick(mut self) -> Self {
+        self = self.tick_items();
+        self = self.tick_temperature();
+
+        self
     }
 
     /// Update the temperature of the entire fire for one tick, depending on [Self::tick_time]. The temperature will jump rapidly toward the target when it's far from the it, but be asymptotic toward it as it gets close. If the number of burning items becomes zero, set the fire's temperature to the ambient temperature. The temperature moves more quickly if the fire has less thermal inertia (energy remaining).
-    fn tick_temperature(&mut self) {
+    #[must_use]
+    fn tick_temperature(mut self) -> Self {
         if self.items.len() != 0 {
             let target_temperature = self.target_temperature();
             let temperature_difference = target_temperature - self.temperature;
-            self.temperature = self.temperature
+            self.temperature = self.temperature()
                 + ((temperature_difference / (0.024 * self.energy_remaining())) * self.tick_time);
         } else {
             self.temperature = self.ambient_temperature;
         }
+
+        self
     }
 
     /// The temperature the entire fire would be burning at, dependent on its current items, if it had no thermal intertia. This is the target that the fire will trend toward in its inertia calculation in [Self::tick_temperature()].
@@ -326,66 +336,67 @@ impl Fire {
     }
 
     /// Tick each item in the fire.
-    fn tick_items(&mut self) {
+    fn tick_items(mut self) -> Self {
         // The current temperature of the fire.
         let fire_temperature = self.temperature();
 
         // Modify items.
-        for (i, item) in self.items.iter_mut().enumerate() {
+        for (i, item) in self.items.clone().iter().enumerate() {
             if item.burned_state == BurnedState::Fresh {
-                Self::heat_item_tick(
-                    item,
-                    fire_temperature,
-                    self.ambient_temperature,
-                    self.tick_time,
-                );
+                self.items.insert(i, self.heat_item_tick(item));
             } else if item.burned_state == BurnedState::Burning {
-                Self::burn_item_tick(item, fire_temperature, self.tick_time)
+                self.items.insert(i, self.burn_item_tick(item))
             }
         }
 
         // Delete items that have been spent.
         self.items.retain(|x| x.burned_state != BurnedState::Spent);
+
+        self
     }
 
     /// Tick an unburning item.
-    fn heat_item_tick(
-        item: &mut BurningItem,
-        fire_temperature: f64,
-        ambient_temperature: f64,
-        tick_time: f64,
-    ) {
-        if fire_temperature >= item.item_type.minimum_activation_temperature().unwrap() {
+    fn heat_item_tick(&self, item: &BurningItem) -> BurningItem {
+        let mut item = item.clone();
+
+        if self.temperature() >= item.item_type.minimum_activation_temperature().unwrap() {
             // Increase activation progress if the fire temperature is above the minimum activation temperature of the item.
-            *item.activation_progress.as_mut().unwrap() += fire_temperature * 0.005 * tick_time;
+            *item.activation_progress.as_mut().unwrap() +=
+                self.temperature() * 0.005 * self.tick_time;
         } else {
             // Decay the item's activation progress if the fire temperature is below the minimum activation temperature of the item.
             *item.activation_progress.as_mut().unwrap() -=
-                ((item.item_type.burn_temperature().unwrap() - ambient_temperature)
+                ((item.item_type.burn_temperature().unwrap() - self.ambient_temperature)
                     * item.activation_percentage())
                     * 0.005
-                    * tick_time;
+                    * self.tick_time;
         }
 
         // If the item's activation progress has transcended its activation threshold (burn energy * activation coefficient), set the item to burning, and disable its activation progress.
         if item.activation_progress.unwrap()
             >= item.item_type.burn_energy().unwrap()
                 * item.item_type.activation_coefficient().unwrap()
-            && fire_temperature >= item.item_type.minimum_activation_temperature().unwrap()
+            && self.temperature() >= item.item_type.minimum_activation_temperature().unwrap()
         {
             item.activation_progress = None;
             item.burned_state = BurnedState::Burning;
         }
+
+        item
     }
 
     /// Tick a burning item.
-    fn burn_item_tick(item: &mut BurningItem, fire_temperature: f64, tick_time: f64) {
-        item.remaining_energy -= fire_temperature * 0.001 * tick_time;
+    fn burn_item_tick(&self, item: &BurningItem) -> BurningItem {
+        let mut item = item.clone();
+
+        item.remaining_energy -= self.temperature() * 0.001 * self.tick_time;
 
         if item.remaining_energy <= 0.0 {
             item.burned_state = BurnedState::Spent;
             item.remaining_energy = 0.0;
         }
+
+        item
     }
 }
 
@@ -397,8 +408,7 @@ mod test {
 
     #[test]
     fn tick_temperature() {
-        let mut fire = Fire::init();
-        fire.add_item(LargeLog).unwrap();
+        let mut fire = Fire::init().add_item(LargeLog).unwrap();
         for i in 0..20 {
             match i {
                 0 => assert_approx_eq!(fire.temperature(), 873.15),
@@ -408,7 +418,7 @@ mod test {
                 19 => assert_approx_eq!(fire.temperature(), 822.011643),
                 _ => {}
             }
-            fire.tick_temperature();
+            fire = fire.tick_temperature();
         }
     }
 
@@ -419,18 +429,21 @@ mod test {
 
     #[test]
     fn target_temperature_1() {
-        let mut fire = Fire::init();
-        fire.add_item(Twig).unwrap();
-        fire.add_item(Twig).unwrap();
-        fire.add_item(Twig).unwrap();
-        fire.add_item(Twig).unwrap();
+        let fire = Fire::init()
+            .add_item(Twig)
+            .unwrap()
+            .add_item(Twig)
+            .unwrap()
+            .add_item(Twig)
+            .unwrap()
+            .add_item(Twig)
+            .unwrap();
         assert_approx_eq!(fire.target_temperature(), 858.137012);
     }
 
     #[test]
     fn target_temperature_2() {
-        let mut fire = Fire::init();
-        fire.add_item(LargeLog).unwrap();
+        let fire = Fire::init().add_item(LargeLog).unwrap();
         assert_approx_eq!(fire.target_temperature(), 428.534615)
     }
 }
