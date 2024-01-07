@@ -55,6 +55,25 @@ impl Inventory {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Item {
+    mass: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct FuelItem {
+    burn_energy: f64,
+    burn_temperature: f64,
+    activation_coefficient: f64,
+    minimum_activation_temperature: f64,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct WeaponItem {
+    hit_chance: f64,
+    hit_damage: (f64, f64),
+}
+
 /// Here are all item IDs in the game. Contained methods can be used to fetch static item data (like mass and burn temperature). The only thing stored is the item's type. Item data cannot be modified.
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum ItemId {
@@ -69,92 +88,89 @@ pub(crate) enum ItemId {
 
 impl ItemId {
     /// Get an item's mass in grams from static definitions.
-    pub fn mass(&self) -> f64 {
+    pub fn item(&self) -> Item {
         match self {
-            Twig => 10.0,
-            SmallStick => 500.0,
-            MediumStick => 1000.0,
-            LargeStick => 2000.0,
-            MediumLog => 3500.0,
-            LargeLog => 5000.0,
-            Leaf => 10.0,
+            Twig => Item { mass: 10.0 },
+            SmallStick => Item { mass: 500.0 },
+            MediumStick => Item { mass: 1000.0 },
+            LargeStick => Item { mass: 2000.0 },
+            MediumLog => Item { mass: 3500.0 },
+            LargeLog => Item { mass: 5000.0 },
+            Leaf => Item { mass: 10.0 },
         }
     }
 
-    /// Get an item's total burn energy from static definitions (1:1 ratio from grams to energy for natural wood), if it can burn at all. Returns [None] if the item cannot burn.
-    pub fn burn_energy(&self) -> Option<f64> {
+    pub fn fuel(&self) -> Option<FuelItem> {
         match self {
-            Twig => Some(10.0),
-            SmallStick => Some(500.0),
-            MediumStick => Some(1000.0),
-            LargeStick => Some(2000.0),
-            MediumLog => Some(3500.0),
-            LargeLog => Some(5000.0),
-            Leaf => Some(10.0),
+            Twig => Some(FuelItem {
+                burn_energy: 10.0,
+                burn_temperature: 873.15,
+                activation_coefficient: 1.0,
+                minimum_activation_temperature: 533.15,
+            }),
+            SmallStick => Some(FuelItem {
+                burn_energy: 500.0,
+                burn_temperature: 873.15,
+                activation_coefficient: 1.0,
+                minimum_activation_temperature: 533.15,
+            }),
+            MediumStick => Some(FuelItem {
+                burn_energy: 1000.0,
+                burn_temperature: 873.15,
+                activation_coefficient: 1.0,
+                minimum_activation_temperature: 533.15,
+            }),
+            LargeStick => Some(FuelItem {
+                burn_energy: 2000.0,
+                burn_temperature: 873.15,
+                activation_coefficient: 1.0,
+                minimum_activation_temperature: 533.15,
+            }),
+            MediumLog => Some(FuelItem {
+                burn_energy: 3500.0,
+                burn_temperature: 873.15,
+                activation_coefficient: 1.0,
+                minimum_activation_temperature: 533.15,
+            }),
+            LargeLog => Some(FuelItem {
+                burn_energy: 5000.0,
+                burn_temperature: 873.15,
+                activation_coefficient: 1.0,
+                minimum_activation_temperature: 533.15,
+            }),
+            Leaf => Some(FuelItem {
+                burn_energy: 10.0,
+                burn_temperature: 773.15,
+                activation_coefficient: 3.0,
+                minimum_activation_temperature: 673.15,
+            }),
+            _ => None,
         }
     }
 
-    /// Get an item's burn temperature in degrees of kelvin from static definitions, if it can burn at all. Returns [None] if the item cannot burn.
-    pub fn burn_temperature(&self) -> Option<f64> {
+    pub fn weapon(&self) -> Option<WeaponItem> {
         match self {
-            Twig => Some(873.15),
-            SmallStick => Some(873.15),
-            MediumStick => Some(873.15),
-            LargeStick => Some(873.15),
-            MediumLog => Some(873.15),
-            LargeLog => Some(873.15),
-            Leaf => Some(773.15),
-        }
-    }
-
-    /// Get an item's activation coefficient (to burn) from static definitions, if it can burn at all. Returns [None] if the item cannot burn. This number will use the be multiplied with burn energy to determine the amount of time and temperature to light the item. Gasoline, for example, will have a low activation coefficient. Leaves, on the other hand, have a higher activation coefficient.
-    pub fn activation_coefficient(&self) -> Option<f64> {
-        match self {
-            Twig => Some(1.0),
-            SmallStick => Some(1.0),
-            MediumStick => Some(1.0),
-            LargeStick => Some(1.0),
-            MediumLog => Some(1.0),
-            LargeLog => Some(1.0),
-            Leaf => Some(3.0),
-        }
-    }
-
-    pub fn minimum_activation_temperature(&self) -> Option<f64> {
-        match self {
-            Twig => Some(533.15),
-            SmallStick => Some(533.15),
-            MediumStick => Some(533.15),
-            LargeStick => Some(533.15),
-            MediumLog => Some(533.15),
-            LargeLog => Some(533.15),
-            Leaf => Some(673.15),
-        }
-    }
-
-    /// Get an item's chance to hit an enemy when used as a weapon from static definitions. Returns [None] if the item could not be used as a weapon.
-    pub fn hit_chance(&self) -> Option<f64> {
-        match self {
-            Twig => None,
-            SmallStick => Some(0.35),
-            MediumStick => Some(0.4),
-            LargeStick => Some(0.5),
-            MediumLog => Some(0.3),
-            LargeLog => Some(0.2),
-            Leaf => None,
-        }
-    }
-
-    /// Get an item's hit damage range from static definitions. Returns [None] if the item could not be used as a weapon.
-    pub fn hit_damage(&self) -> Option<(f64, f64)> {
-        match self {
-            Twig => None,
-            SmallStick => Some((2.0, 4.0)),
-            MediumStick => Some((4.0, 6.0)),
-            LargeStick => Some((8.0, 15.0)),
-            MediumLog => Some((6.0, 17.5)),
-            LargeLog => Some((8.0, 20.0)),
-            Leaf => None,
+            SmallStick => Some(WeaponItem {
+                hit_chance: 0.35,
+                hit_damage: (2.0, 4.0),
+            }),
+            MediumStick => Some(WeaponItem {
+                hit_chance: 0.4,
+                hit_damage: (4.0, 6.0),
+            }),
+            LargeStick => Some(WeaponItem {
+                hit_chance: 0.5,
+                hit_damage: (8.0, 15.0),
+            }),
+            MediumLog => Some(WeaponItem {
+                hit_chance: 0.3,
+                hit_damage: (6.0, 17.5),
+            }),
+            LargeLog => Some(WeaponItem {
+                hit_chance: 0.2,
+                hit_damage: (8.0, 20.0),
+            }),
+            _ => None,
         }
     }
 }
@@ -176,8 +192,8 @@ pub(crate) enum BurnedState {
 /// An item that is burning (or is about to be burning) in a fire.
 #[derive(Debug, Clone)]
 pub(crate) struct BurningItem {
-    /// The type of the item that is burning
-    item_type: ItemId,
+    /// The item that is burning (or is going to burn in the future)
+    fuel: FuelItem,
     /// The amount of energy remaining before the item runs out of energy
     remaining_energy: f64,
     /// The amount of energy put into activating the fuel. When it gets at or above [Self::remaining_energy], the fuel will activate. [Some] if the fuel has yet to begin burning. [None] if the fuel has activated.
@@ -189,12 +205,13 @@ pub(crate) struct BurningItem {
 impl BurningItem {
     /// Create a new item that has not yet started to burn, and has full remaining percentage.
     pub fn new(item_type: ItemId) -> Result<Self, BurnItemError> {
-        let Some(burn_energy) = item_type.burn_energy() else {
+        let Some(fuel) = item_type.fuel() else {
             return Err(BurnItemError::NotFlammable);
         };
+        let burn_energy = fuel.burn_energy;
 
         Ok(BurningItem {
-            item_type,
+            fuel,
             remaining_energy: burn_energy,
             activation_progress: Some(0.0),
             burned_state: BurnedState::Fresh,
@@ -206,12 +223,14 @@ impl BurningItem {
         item_type: ItemId,
         remaining_percentage: f64,
     ) -> Result<Self, BurnItemError> {
-        let Some(burn_energy) = item_type.burn_energy() else {
+        let Some(fuel) = item_type.fuel() else {
             return Err(BurnItemError::NotFlammable);
         };
 
+        let burn_energy = fuel.burn_energy;
+
         Ok(BurningItem {
-            item_type,
+            fuel,
             remaining_energy: burn_energy * remaining_percentage,
             activation_progress: None,
             burned_state: BurnedState::Burning,
@@ -220,8 +239,7 @@ impl BurningItem {
 
     pub fn activation_percentage(&self) -> f64 {
         self.activation_progress.unwrap()
-            / (self.item_type.burn_energy().unwrap()
-                * self.item_type.activation_coefficient().unwrap())
+            / (self.fuel.burn_energy * self.fuel.activation_coefficient)
     }
 }
 
@@ -329,12 +347,12 @@ impl Fire {
 
         for item in &self.items {
             let temperature = if item.burned_state == BurnedState::Burning {
-                item.item_type.burn_temperature().unwrap()
+                item.fuel.burn_temperature
             } else if item.burned_state == BurnedState::Fresh
-                && self.temperature() >= item.item_type.minimum_activation_temperature().unwrap()
+                && self.temperature() >= item.fuel.minimum_activation_temperature
             {
                 self.ambient_temperature() /* Ambient temperature plus... */
-                    + ((item.item_type.burn_temperature().unwrap() - self.ambient_temperature() /* ...the amount above room temperature that the item burns... */)
+                    + ((item.fuel.burn_temperature - self.ambient_temperature() /* ...the amount above room temperature that the item burns... */)
                         * item.activation_percentage()) /* ...multiplied by its activation progress */
             } else {
                 self.ambient_temperature()
@@ -370,24 +388,23 @@ impl Fire {
     fn heat_item_tick(&self, item: &BurningItem) -> BurningItem {
         let mut item = item.clone();
 
-        if self.temperature() >= item.item_type.minimum_activation_temperature().unwrap() {
+        if self.temperature() >= item.fuel.minimum_activation_temperature {
             // Increase activation progress if the fire temperature is above the minimum activation temperature of the item.
             *item.activation_progress.as_mut().unwrap() +=
                 self.temperature() * 0.005 * self.tick_resolution();
         } else {
             // Decay the item's activation progress if the fire temperature is below the minimum activation temperature of the item.
-            *item.activation_progress.as_mut().unwrap() -=
-                ((item.item_type.burn_temperature().unwrap() - self.ambient_temperature())
-                    * item.activation_percentage())
-                    * 0.005
-                    * self.tick_resolution();
+            *item.activation_progress.as_mut().unwrap() -= ((item.fuel.burn_temperature
+                - self.ambient_temperature())
+                * item.activation_percentage())
+                * 0.005
+                * self.tick_resolution();
         }
 
         // If the item's activation progress has transcended its activation threshold (burn energy * activation coefficient), set the item to burning, and disable its activation progress.
         if item.activation_progress.unwrap()
-            >= item.item_type.burn_energy().unwrap()
-                * item.item_type.activation_coefficient().unwrap()
-            && self.temperature() >= item.item_type.minimum_activation_temperature().unwrap()
+            >= item.fuel.burn_energy * item.fuel.activation_coefficient
+            && self.temperature() >= item.fuel.minimum_activation_temperature
         {
             item.activation_progress = None;
             item.burned_state = BurnedState::Burning;
