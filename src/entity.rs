@@ -372,9 +372,9 @@ impl Fire {
         // Modify items.
         for (i, item) in self.items.clone().iter().enumerate() {
             if item.burned_state == BurnedState::Fresh {
-                self.items.insert(i, self.heat_item_tick(item));
+                *self.items.get_mut(i).unwrap() = self.heat_item_tick(item);
             } else if item.burned_state == BurnedState::Burning {
-                self.items.insert(i, self.burn_item_tick(item))
+                *self.items.get_mut(i).unwrap() = self.burn_item_tick(item);
             }
         }
 
