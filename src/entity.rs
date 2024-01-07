@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use Item::*;
+use ItemId::*;
 
 /// The player that plays the game
 #[non_exhaustive]
@@ -42,7 +42,7 @@ impl Player {
 #[derive(Debug, Clone)]
 pub(crate) struct Inventory {
     /// The type of item held, and the number of that specific item held
-    items: HashMap<Item, u32>,
+    items: HashMap<ItemId, u32>,
 }
 
 impl Inventory {
@@ -53,17 +53,18 @@ impl Inventory {
     }
 }
 
-/// Static definition for all item types in the game
+/// Here are all item IDs in the game. Contained methods can be used to fetch static item data (like mass and burn temperature). The only thing stored is the item's type. Item data cannot be modified.
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum Item {
+pub(crate) enum ItemId {
     Twig,
     SmallStick,
     MediumStick,
     LargeStick,
     Log,
+    Leaf,
 }
 
-impl Item {
+impl ItemId {
     /// Get an item's mass in grams from static definitions.
     pub fn mass(&self) -> f64 {
         match self {
@@ -72,6 +73,7 @@ impl Item {
             MediumStick => 1000.0,
             LargeStick => 2000.0,
             Log => 5000.0,
+            Leaf => 10.0,
         }
     }
 
@@ -83,50 +85,55 @@ impl Item {
             MediumStick => Some(1000.0),
             LargeStick => Some(2000.0),
             Log => Some(5000.0),
+            Leaf => Some(10.0),
         }
     }
 
     /// Get an item's burn temperature from static definitions, if it can burn at all. Returns [None] if the item cannot burn.
     pub fn burn_temperature(&self) -> Option<f64> {
         match self {
-            Twig => Some(0.75),
-            SmallStick => Some(0.8),
-            MediumStick => Some(0.85),
-            LargeStick => Some(0.9),
+            Twig => Some(2.0),
+            SmallStick => Some(1.75),
+            MediumStick => Some(1.5),
+            LargeStick => Some(1.3),
             Log => Some(1.0),
+            Leaf => Some(0.75),
         }
     }
 
-    /// Get an item's activation temperature (to burn) from static definitions, if it can burn at all. Returns [None] if the item cannot burn.
-    pub fn activation_temperature(&self) -> Option<f64> {
+    /// Get an item's activation coefficient (to burn) from static definitions, if it can burn at all. Returns [None] if the item cannot burn. This number will use the be multiplied with burn energy to determine the amount of time and temperature to light the item. Gasoline, for example, will have a low activation coefficient. Leaves, on the other hand, have a higher activation coefficient.
+    pub fn activation_coefficient(&self) -> Option<f64> {
         match self {
-            Twig => Some(0.5),
-            SmallStick => Some(0.8),
+            Twig => Some(1.0),
+            SmallStick => Some(1.0),
             MediumStick => Some(1.0),
-            LargeStick => Some(1.5),
-            Log => Some(4.0),
+            LargeStick => Some(1.0),
+            Log => Some(1.0),
+            Leaf => Some(3.0),
         }
     }
 
-    /// Get an item's chance to hit an enemy when used as a weapon from static definitions.
-    pub fn hit_chance(&self) -> f64 {
+    /// Get an item's chance to hit an enemy when used as a weapon from static definitions. Returns [None] if the item could not be used as a weapon.
+    pub fn hit_chance(&self) -> Option<f64> {
         match self {
-            Twig => 0.10,
-            SmallStick => 0.35,
-            MediumStick => 0.4,
-            LargeStick => 0.5,
-            Log => 0.2,
+            Twig => None,
+            SmallStick => Some(0.35),
+            MediumStick => Some(0.4),
+            LargeStick => Some(0.5),
+            Log => Some(0.2),
+            Leaf => None,
         }
     }
 
-    /// Get an item's hit damage range from static definitions.
-    pub fn hit_damage(&self) -> (f64, f64) {
+    /// Get an item's hit damage range from static definitions. Returns [None] if the item could not be used as a weapon.
+    pub fn hit_damage(&self) -> Option<(f64, f64)> {
         match self {
-            Twig => (0.05, 0.10),
-            SmallStick => (2.0, 4.0),
-            MediumStick => (4.0, 6.0),
-            LargeStick => (8.0, 15.0),
-            Log => (8.0, 20.0),
+            Twig => None,
+            SmallStick => Some((2.0, 4.0)),
+            MediumStick => Some((4.0, 6.0)),
+            LargeStick => Some((8.0, 15.0)),
+            Log => Some((8.0, 20.0)),
+            Leaf => None,
         }
     }
 }
@@ -142,16 +149,17 @@ pub(crate) enum BurnItemError {
 #[derive(Debug, Clone)]
 pub(crate) struct BurningItem {
     /// The type of the item that is burning
-    item_type: Item,
+    item_type: ItemId,
     /// The amount of energy remaining before the item runs out of energy
     remaining_energy: f64,
+    ///
     /// Once the item beings burning, it will not stop.
     is_burning: bool,
 }
 
 impl BurningItem {
     /// Create a new item that has not yet started to burn, and has full remaining percentage.
-    pub fn new(item_type: Item) -> Result<Self, BurnItemError> {
+    pub fn new(item_type: ItemId) -> Result<Self, BurnItemError> {
         let Some(burn_energy) = item_type.burn_energy() else {
             return Err(BurnItemError::NotFlammable);
         };
@@ -165,7 +173,7 @@ impl BurningItem {
 
     /// Create a new item that is already burning, and has a remaining percentage of energy between 0.0 and 1.0. This is used to construct the initial fire when the player begins the game.
     pub fn new_already_burning(
-        item_type: Item,
+        item_type: ItemId,
         remaining_percentage: f64,
     ) -> Result<Self, BurnItemError> {
         let Some(burn_energy) = item_type.burn_energy() else {

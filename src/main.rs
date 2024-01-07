@@ -1,6 +1,6 @@
 use entity::Player;
 
-use crate::entity::Item;
+use crate::entity::ItemId;
 
 mod entity;
 
