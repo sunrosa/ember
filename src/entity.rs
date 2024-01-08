@@ -388,6 +388,18 @@ impl Fire {
         self.weight_of_ambient = value;
         self
     }
+
+    pub fn ambient_temperature_delta(&self) -> f64 {
+        self.ambient_temperature_delta
+    }
+
+    pub fn temperature_delta(&self) -> f64 {
+        self.temperature_delta
+    }
+
+    pub fn energy_remaining_delta(&self) -> f64 {
+        self.energy_remaining_delta
+    }
 }
 
 impl Fire {
@@ -404,6 +416,9 @@ impl Fire {
             tick_resolution: 1.0,
             fresh_fuel_radiates: false,
             weight_of_ambient: 3000.0,
+            temperature_delta: 0.0,
+            energy_remaining_delta: 0.0,
+            ambient_temperature_delta: 0.0,
         }
     }
 
@@ -426,9 +441,11 @@ impl Fire {
         let mut output = String::new();
 
         output += &format!(
-            "TEMPERATURE: {:.0}K\nENERGY: {:.0}\n",
+            "TEMPERATURE: {:.0}K ({:.2})\nENERGY: {:.0} ({:.2})\n",
             self.temperature(),
-            self.energy_remaining()
+            self.temperature_delta(),
+            self.energy_remaining(),
+            self.energy_remaining_delta(),
         );
 
         for item in self
@@ -551,7 +568,7 @@ impl Fire {
         self
     }
 
-    /// Tick an unburning item.
+    /// Tick an unburning item. Items heat up faster if the fire is hotter.
     fn heat_item_tick(&self, item: &BurningItem) -> BurningItem {
         let mut item = item.clone();
 
@@ -580,7 +597,7 @@ impl Fire {
         item
     }
 
-    /// Tick a burning item.
+    /// Tick a burning item. Items burn faster if the fire is hotter.
     fn burn_item_tick(&self, item: &BurningItem) -> BurningItem {
         let mut item = item.clone();
 
