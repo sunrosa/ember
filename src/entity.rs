@@ -301,7 +301,7 @@ impl Fire {
     }
 
     /// Set the fire's ambient temperature
-    pub fn set_ambient_temperature(mut self, value: f64) -> Self {
+    pub fn with_ambient_temperature(mut self, value: f64) -> Self {
         self.ambient_temperature = value;
 
         self
@@ -313,7 +313,7 @@ impl Fire {
     }
 
     /// Set the amount of time to pass between ticks. Higher resolution means less precision. Don't touch this function unless you know what you're doing.
-    pub fn set_tick_resolution(mut self, tick_resolution: f64) -> Self {
+    pub fn with_tick_resolution(mut self, tick_resolution: f64) -> Self {
         self.tick_resolution = tick_resolution;
 
         self
@@ -325,7 +325,7 @@ impl Fire {
     }
 
     /// Whether items that are [BurnedState::Fresh] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all.
-    pub fn set_fresh_fuel_radiates(mut self, value: bool) -> Self {
+    pub fn with_fresh_fuel_radiates(mut self, value: bool) -> Self {
         self.fresh_fuel_radiates = value;
 
         self
@@ -573,7 +573,7 @@ mod test {
         let mut fire = Fire::init()
             .add_multiple_items(ItemId::SmallStick, 5)
             .unwrap();
-        fire = fire.set_tick_resolution(5.0);
+        fire = fire.with_tick_resolution(5.0);
         for i in 0..135 {
             if i == 1 {
                 fire = fire.add_multiple_items(ItemId::MediumStick, 5).unwrap();
