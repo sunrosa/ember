@@ -389,14 +389,17 @@ impl Fire {
         self
     }
 
+    /// The change in ambient temperature during the last tick.
     pub fn ambient_temperature_delta(&self) -> f64 {
         self.ambient_temperature_delta
     }
 
+    /// The change in temperature during the last tick.
     pub fn temperature_delta(&self) -> f64 {
         self.temperature_delta
     }
 
+    /// The change in energy remaining during the last tick.
     pub fn energy_remaining_delta(&self) -> f64 {
         self.energy_remaining_delta
     }
