@@ -15,6 +15,8 @@ fn main() {
             "small stick" => fire = fire.add_item(ItemId::SmallStick).unwrap(),
             "medium stick" => fire = fire.add_item(ItemId::MediumStick).unwrap(),
             "large stick" => fire = fire.add_item(ItemId::LargeStick).unwrap(),
+            "medium log" => fire = fire.add_item(ItemId::MediumLog).unwrap(),
+            "large log" => fire = fire.add_item(ItemId::LargeLog).unwrap(),
             _ => {}
         }
         fire = fire.tick_multiple(20);

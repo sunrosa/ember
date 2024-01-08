@@ -168,43 +168,43 @@ impl ItemId {
             Twig => Some(FuelItem {
                 burn_energy: 10.0,
                 burn_temperature: 873.15,
-                activation_coefficient: 0.8,
+                activation_coefficient: 0.50,
                 minimum_activation_temperature: 533.15,
             }),
             SmallStick => Some(FuelItem {
                 burn_energy: 500.0,
                 burn_temperature: 873.15,
-                activation_coefficient: 0.8,
+                activation_coefficient: 0.50,
                 minimum_activation_temperature: 533.15,
             }),
             MediumStick => Some(FuelItem {
                 burn_energy: 1000.0,
                 burn_temperature: 873.15,
-                activation_coefficient: 0.8,
+                activation_coefficient: 0.50,
                 minimum_activation_temperature: 533.15,
             }),
             LargeStick => Some(FuelItem {
                 burn_energy: 2000.0,
                 burn_temperature: 873.15,
-                activation_coefficient: 0.8,
+                activation_coefficient: 0.50,
                 minimum_activation_temperature: 533.15,
             }),
             MediumLog => Some(FuelItem {
                 burn_energy: 3500.0,
                 burn_temperature: 873.15,
-                activation_coefficient: 0.8,
+                activation_coefficient: 0.50,
                 minimum_activation_temperature: 533.15,
             }),
             LargeLog => Some(FuelItem {
                 burn_energy: 5000.0,
                 burn_temperature: 873.15,
-                activation_coefficient: 0.8,
+                activation_coefficient: 0.50,
                 minimum_activation_temperature: 533.15,
             }),
             Leaves => Some(FuelItem {
                 burn_energy: 100.0,
                 burn_temperature: 773.15,
-                activation_coefficient: 3.0,
+                activation_coefficient: 1.5,
                 minimum_activation_temperature: 673.15,
             }),
             _ => None,
@@ -410,9 +410,9 @@ impl Fire {
     pub fn init() -> Self {
         Fire {
             items: vec![
-                BurningItem::new_already_burning(MediumStick, 0.5).unwrap(),
-                BurningItem::new_already_burning(MediumStick, 0.5).unwrap(),
-                BurningItem::new_already_burning(MediumStick, 0.5).unwrap(),
+                BurningItem::new_already_burning(MediumStick, 0.8).unwrap(),
+                BurningItem::new_already_burning(MediumStick, 0.8).unwrap(),
+                BurningItem::new_already_burning(MediumStick, 0.8).unwrap(),
             ],
             temperature: 873.15,
             ambient_temperature: 295.15,
@@ -459,6 +459,8 @@ impl Fire {
             self.energy_remaining_delta(),
         );
 
+        output += "===========================\n";
+
         for item in self
             .items
             .iter()
@@ -470,6 +472,9 @@ impl Fire {
                 item.activation_percentage() * 100.0
             )
         }
+
+        output += "===========================\n";
+
         for item in self
             .items
             .iter()
