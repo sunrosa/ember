@@ -55,8 +55,9 @@ impl Inventory {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct Item {
+    name: String,
     mass: f64,
 }
 
@@ -90,13 +91,34 @@ impl ItemId {
     /// Get an item's mass in grams from static definitions.
     pub fn item(&self) -> Item {
         match self {
-            Twig => Item { mass: 10.0 },
-            SmallStick => Item { mass: 500.0 },
-            MediumStick => Item { mass: 1000.0 },
-            LargeStick => Item { mass: 2000.0 },
-            MediumLog => Item { mass: 3500.0 },
-            LargeLog => Item { mass: 5000.0 },
-            Leaf => Item { mass: 10.0 },
+            Twig => Item {
+                name: "twig".into(),
+                mass: 10.0,
+            },
+            SmallStick => Item {
+                name: "small stick".into(),
+                mass: 500.0,
+            },
+            MediumStick => Item {
+                name: "medium stick".into(),
+                mass: 1000.0,
+            },
+            LargeStick => Item {
+                name: "large stick".into(),
+                mass: 2000.0,
+            },
+            MediumLog => Item {
+                name: "medium log".into(),
+                mass: 3500.0,
+            },
+            LargeLog => Item {
+                name: "large log".into(),
+                mass: 5000.0,
+            },
+            Leaf => Item {
+                name: "leaf".into(),
+                mass: 10.0,
+            },
         }
     }
 
@@ -105,37 +127,37 @@ impl ItemId {
             Twig => Some(FuelItem {
                 burn_energy: 10.0,
                 burn_temperature: 873.15,
-                activation_coefficient: 1.0,
+                activation_coefficient: 0.8,
                 minimum_activation_temperature: 533.15,
             }),
             SmallStick => Some(FuelItem {
                 burn_energy: 500.0,
                 burn_temperature: 873.15,
-                activation_coefficient: 1.0,
+                activation_coefficient: 0.8,
                 minimum_activation_temperature: 533.15,
             }),
             MediumStick => Some(FuelItem {
                 burn_energy: 1000.0,
                 burn_temperature: 873.15,
-                activation_coefficient: 1.0,
+                activation_coefficient: 0.8,
                 minimum_activation_temperature: 533.15,
             }),
             LargeStick => Some(FuelItem {
                 burn_energy: 2000.0,
                 burn_temperature: 873.15,
-                activation_coefficient: 1.0,
+                activation_coefficient: 0.8,
                 minimum_activation_temperature: 533.15,
             }),
             MediumLog => Some(FuelItem {
                 burn_energy: 3500.0,
                 burn_temperature: 873.15,
-                activation_coefficient: 1.0,
+                activation_coefficient: 0.8,
                 minimum_activation_temperature: 533.15,
             }),
             LargeLog => Some(FuelItem {
                 burn_energy: 5000.0,
                 burn_temperature: 873.15,
-                activation_coefficient: 1.0,
+                activation_coefficient: 0.8,
                 minimum_activation_temperature: 533.15,
             }),
             Leaf => Some(FuelItem {
@@ -192,6 +214,8 @@ pub(crate) enum BurnedState {
 /// An item that is burning (or is about to be burning) in a fire.
 #[derive(Debug, Clone)]
 pub(crate) struct BurningItem {
+    /// The shared item information.
+    item: Item,
     /// The item that is burning (or is going to burn in the future)
     fuel: FuelItem,
     /// The amount of energy remaining before the item runs out of energy
@@ -211,6 +235,7 @@ impl BurningItem {
         let burn_energy = fuel.burn_energy;
 
         Ok(BurningItem {
+            item: item_type.item(),
             fuel,
             remaining_energy: burn_energy,
             activation_progress: Some(0.0),
@@ -230,6 +255,7 @@ impl BurningItem {
         let burn_energy = fuel.burn_energy;
 
         Ok(BurningItem {
+            item: item_type.item(),
             fuel,
             remaining_energy: burn_energy * remaining_percentage,
             activation_progress: None,
@@ -252,12 +278,14 @@ impl BurningItem {
 pub(crate) struct Fire {
     /// The items that are in the fire's inventory. This includes not-yet-burning items.
     items: Vec<BurningItem>,
-    /// The amount of time to progress between ticks
-    tick_resolution: f64,
     /// The current temperature of the fire. This will not change immediately toward the target temperature, but gradually.
     temperature: f64,
     /// Ambient temperature around the fire
     ambient_temperature: f64,
+    /// The amount of time to progress between ticks
+    tick_resolution: f64,
+    /// Whether items that are [BurnedState::Fresh] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all.
+    fresh_fuel_radiates: bool,
 }
 
 impl Fire {
@@ -270,9 +298,10 @@ impl Fire {
                 BurningItem::new_already_burning(MediumStick, 0.5).unwrap(),
                 BurningItem::new_already_burning(MediumStick, 0.5).unwrap(),
             ],
-            tick_resolution: 1.0,
             temperature: 873.15,
             ambient_temperature: 295.15,
+            tick_resolution: 1.0,
+            fresh_fuel_radiates: false,
         }
     }
 
@@ -283,10 +312,63 @@ impl Fire {
         Ok(self)
     }
 
+    pub fn summary(&self) -> String {
+        let mut output = String::new();
+
+        output += &format!(
+            "TEMPERATURE: {:.0}K\nENERGY: {:.0}\n",
+            self.temperature(),
+            self.energy_remaining()
+        );
+
+        for item in self
+            .items
+            .iter()
+            .filter(|x| x.burned_state == BurnedState::Fresh)
+        {
+            output += &format!(
+                "HEATING {}: {:.0}%\n",
+                item.item.name.to_uppercase(),
+                item.activation_percentage() * 100.0
+            )
+        }
+        for item in self
+            .items
+            .iter()
+            .filter(|x| x.burned_state == BurnedState::Burning)
+        {
+            output += &format!(
+                "BURNING {}: {:.0}%\n",
+                item.item.name.to_uppercase(),
+                100.0 * (item.remaining_energy / item.fuel.burn_energy)
+            )
+        }
+
+        output
+    }
+
+    /// The current tick resolution of the fire
+    pub fn tick_resolution(&self) -> f64 {
+        self.tick_resolution
+    }
+
     /// Set the amount of time to pass between ticks. Higher resolution means less precision. Don't touch this function unless you know what you're doing.
     #[must_use]
     pub fn set_tick_resolution(mut self, tick_resolution: f64) -> Self {
         self.tick_resolution = tick_resolution;
+
+        self
+    }
+
+    /// Whether items that are [BurnedState::Fresh] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all.
+    pub fn fresh_fuel_radiates(&self) -> bool {
+        self.fresh_fuel_radiates
+    }
+
+    /// Whether items that are [BurnedState::Fresh] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all.
+    #[must_use]
+    pub fn set_fresh_fuel_radiates(mut self, value: bool) -> Self {
+        self.fresh_fuel_radiates = value;
 
         self
     }
@@ -299,11 +381,6 @@ impl Fire {
         }
 
         output
-    }
-
-    /// The current tick resolution of the fire
-    pub fn tick_resolution(&self) -> f64 {
-        self.tick_resolution
     }
 
     /// The current temperature of the fire itself
@@ -348,7 +425,8 @@ impl Fire {
         for item in &self.items {
             let temperature = if item.burned_state == BurnedState::Burning {
                 item.fuel.burn_temperature
-            } else if item.burned_state == BurnedState::Fresh
+            } else if self.fresh_fuel_radiates()
+                && item.burned_state == BurnedState::Fresh
                 && self.temperature() >= item.fuel.minimum_activation_temperature
             {
                 self.ambient_temperature() /* Ambient temperature plus... */
@@ -366,10 +444,7 @@ impl Fire {
 
     /// Tick each item in the fire.
     fn tick_items(mut self) -> Self {
-        // The current temperature of the fire.
-        let fire_temperature = self.temperature();
-
-        // Modify items.
+        // TODO: Get rid of the clone() call here for efficiency. This may be possible through std's Cell, or clever references.
         for (i, item) in self.items.clone().iter().enumerate() {
             if item.burned_state == BurnedState::Fresh {
                 *self.items.get_mut(i).unwrap() = self.heat_item_tick(item);
