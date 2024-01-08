@@ -426,12 +426,19 @@ impl Fire {
     }
 
     /// Add a fresh, unburning item to the fire.
+    ///
+    /// # Errors
+    /// Returns [`NotFlammable`](BurnItemError::NotFlammable) if the [`ItemId`] passed in is not of a flammable item.
     pub fn add_item(mut self, item_type: ItemId) -> Result<Self, BurnItemError> {
         self.items.push(BurningItem::new(item_type)?);
 
         Ok(self)
     }
 
+    /// Add [`count`] of the same item to the fire.
+    ///
+    /// # Errors
+    /// Returns [`NotFlammable`](BurnItemError::NotFlammable) if the [`ItemId`] passed in is not of a flammable item.
     pub fn add_items(mut self, item_type: ItemId, count: u32) -> Result<Self, BurnItemError> {
         for _ in 0..count {
             self = self.add_item(item_type)?;
@@ -440,6 +447,7 @@ impl Fire {
         Ok(self)
     }
 
+    /// Basic summary string for printing out to a user interface.
     pub fn summary(&self) -> String {
         let mut output = String::new();
 
