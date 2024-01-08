@@ -84,7 +84,7 @@ pub(crate) enum ItemId {
     LargeStick,
     MediumLog,
     LargeLog,
-    Leaf,
+    Leaves,
 }
 
 impl ItemId {
@@ -115,9 +115,9 @@ impl ItemId {
                 name: "large log".into(),
                 mass: 5000.0,
             },
-            Leaf => Item {
-                name: "leaf".into(),
-                mass: 10.0,
+            Leaves => Item {
+                name: "dry leaf handful".into(),
+                mass: 100.0,
             },
         }
     }
@@ -160,8 +160,8 @@ impl ItemId {
                 activation_coefficient: 0.8,
                 minimum_activation_temperature: 533.15,
             }),
-            Leaf => Some(FuelItem {
-                burn_energy: 10.0,
+            Leaves => Some(FuelItem {
+                burn_energy: 100.0,
                 burn_temperature: 773.15,
                 activation_coefficient: 3.0,
                 minimum_activation_temperature: 673.15,
@@ -317,7 +317,7 @@ impl Fire {
         item_type: ItemId,
         count: u32,
     ) -> Result<Self, BurnItemError> {
-        for i in 0..count {
+        for _ in 0..count {
             self.items.push(BurningItem::new(item_type)?);
         }
 
@@ -417,7 +417,7 @@ impl Fire {
     /// Tick X times
     #[must_use]
     pub fn tick_multiple(mut self, count: u32) -> Self {
-        for i in 0..count {
+        for _ in 0..count {
             self = self.tick();
         }
 
