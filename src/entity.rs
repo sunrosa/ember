@@ -288,9 +288,52 @@ pub(crate) struct Fire {
     fresh_fuel_radiates: bool,
 }
 
+// Getters and setters
+impl Fire {
+    /// The current temperature of the fire itself
+    pub fn temperature(&self) -> f64 {
+        self.temperature
+    }
+
+    /// The current ambient temperature of the fire itself
+    pub fn ambient_temperature(&self) -> f64 {
+        self.ambient_temperature
+    }
+
+    /// Set the fire's ambient temperature
+    pub fn set_ambient_temperature(mut self, value: f64) -> Self {
+        self.ambient_temperature = value;
+
+        self
+    }
+
+    /// The current tick resolution of the fire
+    pub fn tick_resolution(&self) -> f64 {
+        self.tick_resolution
+    }
+
+    /// Set the amount of time to pass between ticks. Higher resolution means less precision. Don't touch this function unless you know what you're doing.
+    pub fn set_tick_resolution(mut self, tick_resolution: f64) -> Self {
+        self.tick_resolution = tick_resolution;
+
+        self
+    }
+
+    /// Whether items that are [BurnedState::Fresh] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all.
+    pub fn fresh_fuel_radiates(&self) -> bool {
+        self.fresh_fuel_radiates
+    }
+
+    /// Whether items that are [BurnedState::Fresh] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all.
+    pub fn set_fresh_fuel_radiates(mut self, value: bool) -> Self {
+        self.fresh_fuel_radiates = value;
+
+        self
+    }
+}
+
 impl Fire {
     /// Create a new fire for use at the start of the game. This function should only be called once.
-    #[must_use]
     pub fn init() -> Self {
         Fire {
             items: vec![
@@ -359,32 +402,6 @@ impl Fire {
         output
     }
 
-    /// The current tick resolution of the fire
-    pub fn tick_resolution(&self) -> f64 {
-        self.tick_resolution
-    }
-
-    /// Set the amount of time to pass between ticks. Higher resolution means less precision. Don't touch this function unless you know what you're doing.
-    #[must_use]
-    pub fn set_tick_resolution(mut self, tick_resolution: f64) -> Self {
-        self.tick_resolution = tick_resolution;
-
-        self
-    }
-
-    /// Whether items that are [BurnedState::Fresh] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all.
-    pub fn fresh_fuel_radiates(&self) -> bool {
-        self.fresh_fuel_radiates
-    }
-
-    /// Whether items that are [BurnedState::Fresh] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all.
-    #[must_use]
-    pub fn set_fresh_fuel_radiates(mut self, value: bool) -> Self {
-        self.fresh_fuel_radiates = value;
-
-        self
-    }
-
     /// The total energy remaining in the fire. This includes both burning and unburning items.
     pub fn energy_remaining(&self) -> f64 {
         let mut output = 0.0;
@@ -395,18 +412,7 @@ impl Fire {
         output
     }
 
-    /// The current temperature of the fire itself
-    pub fn temperature(&self) -> f64 {
-        self.temperature
-    }
-
-    /// The current ambient temperature of the fire itself
-    pub fn ambient_temperature(&self) -> f64 {
-        self.ambient_temperature
-    }
-
     /// Pass time, and progress all items contained in the fire.
-    #[must_use]
     pub fn tick(mut self) -> Self {
         self = self.tick_items();
         self = self.tick_temperature();
@@ -415,7 +421,6 @@ impl Fire {
     }
 
     /// Tick X times
-    #[must_use]
     pub fn tick_multiple(mut self, count: u32) -> Self {
         for _ in 0..count {
             self = self.tick();
@@ -425,7 +430,6 @@ impl Fire {
     }
 
     /// Update the temperature of the entire fire for one tick, depending on [Self::tick_time]. The temperature will jump rapidly toward the target when it's far from the it, but be asymptotic toward it as it gets close. If the number of burning items becomes zero, set the fire's temperature to the ambient temperature. The temperature moves more quickly if the fire has less thermal inertia (energy remaining).
-    #[must_use]
     fn tick_temperature(mut self) -> Self {
         if self.items.len() != 0 {
             let target_temperature = self.target_temperature();
