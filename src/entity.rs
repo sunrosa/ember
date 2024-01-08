@@ -328,6 +328,8 @@ pub struct Fire {
     tick_resolution: f64,
     /// Whether items that are [`BurnedState::Fresh`] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all, as long as they're above their [`minimum activation temperature`](FuelItem::minimum_activation_temperature).
     fresh_fuel_radiates: bool,
+    /// The amount the fire should include the ambient temperature in its weighted mean of temperature. This simulates heat escaping into the atmosphere.
+    weight_of_ambient: f64,
 }
 
 /// Getters and setters
@@ -345,7 +347,6 @@ impl Fire {
     /// Set the fire's ambient temperature
     pub fn with_ambient_temperature(mut self, value: f64) -> Self {
         self.ambient_temperature = value;
-
         self
     }
 
@@ -357,7 +358,6 @@ impl Fire {
     /// Set the amount of time to pass between ticks. Higher resolution means less precision. Don't touch this function unless you know what you're doing.
     pub fn with_tick_resolution(mut self, tick_resolution: f64) -> Self {
         self.tick_resolution = tick_resolution;
-
         self
     }
 
@@ -369,7 +369,17 @@ impl Fire {
     /// Whether items that are [`BurnedState::Fresh`] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all, as long as they're above their [`minimum activation temperature`](FuelItem::minimum_activation_temperature).
     pub fn with_fresh_fuel_radiates(mut self, value: bool) -> Self {
         self.fresh_fuel_radiates = value;
+        self
+    }
 
+    /// The amount the fire should include the ambient temperature in its weighted mean of temperature. This simulates heat escaping into the atmosphere.
+    pub fn weight_of_ambient(&self) -> f64 {
+        self.weight_of_ambient
+    }
+
+    /// The amount the fire should include the ambient temperature in its weighted mean of temperature. This simulates heat escaping into the atmosphere.
+    pub fn with_weight_of_ambient(mut self, value: f64) -> Self {
+        self.weight_of_ambient = value;
         self
     }
 }
@@ -387,6 +397,7 @@ impl Fire {
             ambient_temperature: 295.15,
             tick_resolution: 1.0,
             fresh_fuel_radiates: false,
+            weight_of_ambient: 2000.0,
         }
     }
 
@@ -485,6 +496,9 @@ impl Fire {
     /// The temperature the entire fire would be burning at, dependent on its current items, if it had no thermal intertia. This is the target that the fire will trend toward in its inertia calculation in [Self::tick_temperature()].
     fn target_temperature(&self) -> f64 {
         let mut weighted_data: Vec<(f64, f64)> = Vec::new();
+
+        // Add ambient temperature with its configured weight.
+        weighted_data.push((self.ambient_temperature(), self.weight_of_ambient()));
 
         for item in &self.items {
             let temperature = if item.burned_state == BurnedState::Burning {
