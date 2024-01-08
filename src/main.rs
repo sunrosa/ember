@@ -25,16 +25,6 @@ fn main() {
         }
 
         println!("{}", fire.summary());
-        fire = fire
-            .tick()
-            .tick()
-            .tick()
-            .tick()
-            .tick()
-            .tick()
-            .tick()
-            .tick()
-            .tick()
-            .tick();
+        fire = fire.tick_multiple(10);
     }
 }

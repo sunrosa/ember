@@ -414,6 +414,16 @@ impl Fire {
         self
     }
 
+    /// Tick X times
+    #[must_use]
+    pub fn tick_multiple(mut self, count: u32) -> Self {
+        for i in 0..count {
+            self = self.tick();
+        }
+
+        self
+    }
+
     /// Update the temperature of the entire fire for one tick, depending on [Self::tick_time]. The temperature will jump rapidly toward the target when it's far from the it, but be asymptotic toward it as it gets close. If the number of burning items becomes zero, set the fire's temperature to the ambient temperature. The temperature moves more quickly if the fire has less thermal inertia (energy remaining).
     #[must_use]
     fn tick_temperature(mut self) -> Self {
