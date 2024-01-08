@@ -7,7 +7,7 @@ use crate::math::weighted_mean;
 /// The player that plays the game
 #[non_exhaustive]
 #[derive(Debug, Clone)]
-pub(crate) struct Player {
+pub struct Player {
     /// Hit points
     hit_points: f64,
     /// Maximum hit points
@@ -19,65 +19,105 @@ pub(crate) struct Player {
 }
 
 impl Player {
-    const STARTING_BODY_TEMP: f64 = 310.15;
-
-    pub fn new(max_hp: f64) -> Self {
+    /// Create a new [`Player`] with customization. See [`init`](Player::init()) to create a [`Player`] with default parameters.
+    pub fn new(max_hp: f64, inventory_capacity: f64) -> Self {
         Self {
             hit_points: max_hp,
             max_hit_points: max_hp,
-            body_temperature: Self::STARTING_BODY_TEMP,
-            inventory: Inventory::new(),
+            body_temperature: 310.15,
+            inventory: Inventory::new(inventory_capacity),
         }
     }
 
-    pub fn damage(&mut self, hp: f64) {
-        self.hit_points -= hp;
+    /// Create a new _default_ player to start the game with. See the [`new`](Player::new()) function for customization.
+    pub fn init() -> Self {
+        Self {
+            hit_points: 100.0,
+            max_hit_points: 100.0,
+            body_temperature: 310.15,
+            inventory: Inventory::new(10000.0),
+        }
     }
 
-    pub fn heal(&mut self, hp: f64) {
+    pub fn damage(mut self, hp: f64) -> Self {
+        self.hit_points -= hp;
+        self
+    }
+
+    pub fn heal(mut self, hp: f64) -> Self {
         self.hit_points += hp;
+        self
     }
 }
 
 /// An inventory of items
 #[non_exhaustive]
 #[derive(Debug, Clone)]
-pub(crate) struct Inventory {
+pub struct Inventory {
     /// The type of item held, and the number of that specific item held
     items: HashMap<ItemId, u32>,
+    /// The inventory's capacity in grams
+    capacity: f64,
 }
 
 impl Inventory {
-    pub fn new() -> Self {
+    /// Create a new empty inventory.
+    ///
+    /// # Parameters
+    /// * `capacity` - The capacity in grams of the inventory
+    pub fn new(capacity: f64) -> Self {
         Inventory {
             items: HashMap::new(),
+            capacity,
         }
+    }
+
+    /// Get the inventory's capacity in grams
+    pub fn capacity(&self) -> f64 {
+        self.capacity
+    }
+
+    /// Set the inventory's capacity in grams
+    pub fn with_capacity(mut self, value: f64) -> Self {
+        self.capacity = value;
+        self
     }
 }
 
+/// Base item data present for every item in the game. Extra, optional, information can be found in more specialized structs such as [`FuelItem`] or [`WeaponItem`]. To store an item properly, combine this struct with whatever specialization you desire, and store it in a tuple or a struct of its own through composition.
+///
+/// To retrieve item information from asset definitions, use [`ItemId::item()`], [`ItemId::fuel()`], etc.
 #[derive(Debug, Clone)]
-pub(crate) struct Item {
-    name: String,
-    mass: f64,
+pub struct Item {
+    /// The name of the item, in English, to be served to the player as they play the game.
+    pub name: String,
+    /// The mass of the item in grams.
+    pub mass: f64,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct FuelItem {
-    burn_energy: f64,
-    burn_temperature: f64,
-    activation_coefficient: f64,
-    minimum_activation_temperature: f64,
+pub struct FuelItem {
+    /// The total burn energy of the fuel, in no particular unit. It determines the fuel's burn duration, and also how long it takes to heat up before it burns (in conjunction with [`activation_coefficient`](Self::activation_coefficient)).
+    ///
+    /// It also affects the fuel's "thermal inertia". If a fresh, cold log is thrown into a fire burning a small stick, it will quickly suck all of the heat from it, because the log has a much higher thermal intertia compared to the stick.
+    pub burn_energy: f64,
+    /// The fuel's burn temperature in degrees kelvin. The hotter the fuel burns, the faster it'll heat up other fuels for burning. A fire's temperature is the weighted mean of each fuel's [`burn_temperature`](Self::burn_temperature) and each of their [`burn_energy`](Self::burn_energy).
+    pub burn_temperature: f64,
+    /// The coefficient for the increase in [`activation_progress`](BurningItem::activation_progress) when the fuel is in the heating stage. This does not affect burning in any way.
+    pub activation_coefficient: f64,
+    /// The minimum temperature for the fuel to gain [`activation_progress`](BurningItem::activation_progress). It will otherwise lose progress. If [`fresh_fuel_radiates`](Fire::fresh_fuel_radiates) is enabled, the fuel will also increase in temperature (and thus absorb less heat from the fire) if the temperature of the fire is above this threshold.
+    pub minimum_activation_temperature: f64,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct WeaponItem {
-    hit_chance: f64,
-    hit_damage: (f64, f64),
+pub struct WeaponItem {
+    pub hit_chance: f64,
+    pub hit_damage: (f64, f64),
 }
 
 /// Here are all item IDs in the game. Contained methods can be used to fetch static item data (like mass and burn temperature). The only thing stored is the item's type. Item data cannot be modified.
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum ItemId {
+pub enum ItemId {
     Twig,
     SmallStick,
     MediumStick,
@@ -88,7 +128,7 @@ pub(crate) enum ItemId {
 }
 
 impl ItemId {
-    /// Get an item's mass in grams from static definitions.
+    /// Get an item's base data from asset definitions.
     pub fn item(&self) -> Item {
         match self {
             Twig => Item {
@@ -122,6 +162,7 @@ impl ItemId {
         }
     }
 
+    /// Get an item's fuel data from asset definitions. Returns [`None`] if the item is not a [`FuelItem`].
     pub fn fuel(&self) -> Option<FuelItem> {
         match self {
             Twig => Some(FuelItem {
@@ -170,6 +211,7 @@ impl ItemId {
         }
     }
 
+    /// Get an item's weapon data from asset definitions. Returns [`None`] if the item is not a [`WeaponItem`].
     pub fn weapon(&self) -> Option<WeaponItem> {
         match self {
             SmallStick => Some(WeaponItem {
@@ -197,15 +239,15 @@ impl ItemId {
     }
 }
 
-/// An error thrown when trying to construct a [BurningItem].
+/// An error thrown when trying to construct a [`BurningItem`].
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum BurnItemError {
-    /// The item in question is not flammable (or simply lacks needed burn properties in static definitions).
+pub enum BurnItemError {
+    /// The item in question is not flammable (or simply lacks needed burn properties in asset definitions).
     NotFlammable,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum BurnedState {
+pub enum BurnedState {
     Fresh,
     Burning,
     Spent,
@@ -213,16 +255,16 @@ pub(crate) enum BurnedState {
 
 /// An item that is burning (or is about to be burning) in a fire.
 #[derive(Debug, Clone)]
-pub(crate) struct BurningItem {
+pub struct BurningItem {
     /// The shared item information.
     item: Item,
     /// The item that is burning (or is going to burn in the future)
     fuel: FuelItem,
     /// The amount of energy remaining before the item runs out of energy
     remaining_energy: f64,
-    /// The amount of energy put into activating the fuel. When it gets at or above [Self::remaining_energy], the fuel will activate. [Some] if the fuel has yet to begin burning. [None] if the fuel has activated.
+    /// The amount of energy put into activating the fuel. When it gets at or above [`Self::remaining_energy`], the fuel will activate. [`Some`] if the fuel has yet to begin burning. [`None`] if the fuel has activated.
     activation_progress: Option<f64>,
-    /// Whether the item has activated or not. Once the item beings burning, it will not stop. The item begins burning when [Self::activation_progress] reaches its [Self::remaining_energy].
+    /// Whether the item has activated or not. Once the item beings burning, it will not stop. The item begins burning when [`Self::activation_progress`] reaches its [`Self::remaining_energy`].
     burned_state: BurnedState,
 }
 
@@ -275,7 +317,7 @@ impl BurningItem {
 /// # Ideas
 /// * The player will be able to choose their sleep hours. If they choose to sleep at night, they will have to put more fuel into their fire, because nights are colder, however it is easier to find fuel during the day when the sun is up. On the contrary, days are brighter and hotter (and perhaps harder to sleep in), and thus less fuel will be required, but it will be harder to forage at night.
 #[derive(Debug, Clone)]
-pub(crate) struct Fire {
+pub struct Fire {
     /// The items that are in the fire's inventory. This includes not-yet-burning items.
     items: Vec<BurningItem>,
     /// The current temperature of the fire. This will not change immediately toward the target temperature, but gradually.
@@ -284,11 +326,11 @@ pub(crate) struct Fire {
     ambient_temperature: f64,
     /// The amount of time to progress between ticks
     tick_resolution: f64,
-    /// Whether items that are [BurnedState::Fresh] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all.
+    /// Whether items that are [`BurnedState::Fresh`] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all, as long as they're above their [`minimum activation temperature`](FuelItem::minimum_activation_temperature).
     fresh_fuel_radiates: bool,
 }
 
-// Getters and setters
+/// Getters and setters
 impl Fire {
     /// The current temperature of the fire itself
     pub fn temperature(&self) -> f64 {
@@ -319,12 +361,12 @@ impl Fire {
         self
     }
 
-    /// Whether items that are [BurnedState::Fresh] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all.
+    /// Whether items that are [`BurnedState::Fresh`] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all, as long as they're above their [`minimum activation temperature`](FuelItem::minimum_activation_temperature).
     pub fn fresh_fuel_radiates(&self) -> bool {
         self.fresh_fuel_radiates
     }
 
-    /// Whether items that are [BurnedState::Fresh] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all.
+    /// Whether items that are [`BurnedState::Fresh`] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all, as long as they're above their [`minimum activation temperature`](FuelItem::minimum_activation_temperature).
     pub fn with_fresh_fuel_radiates(mut self, value: bool) -> Self {
         self.fresh_fuel_radiates = value;
 
@@ -355,13 +397,9 @@ impl Fire {
         Ok(self)
     }
 
-    pub fn add_multiple_items(
-        mut self,
-        item_type: ItemId,
-        count: u32,
-    ) -> Result<Self, BurnItemError> {
+    pub fn add_items(mut self, item_type: ItemId, count: u32) -> Result<Self, BurnItemError> {
         for _ in 0..count {
-            self.items.push(BurningItem::new(item_type)?);
+            self = self.add_item(item_type)?;
         }
 
         Ok(self)
@@ -420,7 +458,7 @@ impl Fire {
         self
     }
 
-    /// Tick X times
+    /// Tick `count` times
     pub fn tick_multiple(mut self, count: u32) -> Self {
         for _ in 0..count {
             self = self.tick();
@@ -558,7 +596,7 @@ mod test {
 
     #[test]
     fn target_temperature_1() {
-        let fire = Fire::init().add_multiple_items(Twig, 4).unwrap();
+        let fire = Fire::init().add_items(Twig, 4).unwrap();
         assert_approx_eq!(fire.target_temperature(), 858.137012);
     }
 
@@ -570,16 +608,14 @@ mod test {
 
     #[test]
     fn fire() {
-        let mut fire = Fire::init()
-            .add_multiple_items(ItemId::SmallStick, 5)
-            .unwrap();
+        let mut fire = Fire::init().add_items(ItemId::SmallStick, 5).unwrap();
         fire = fire.with_tick_resolution(5.0);
         for i in 0..135 {
             if i == 1 {
-                fire = fire.add_multiple_items(ItemId::MediumStick, 5).unwrap();
+                fire = fire.add_items(ItemId::MediumStick, 5).unwrap();
             }
             if i == 5 {
-                fire = fire.add_multiple_items(ItemId::MediumStick, 10).unwrap();
+                fire = fire.add_items(ItemId::MediumStick, 10).unwrap();
             }
             if i == 5 {
                 fire = fire.add_item(ItemId::MediumStick).unwrap();
@@ -591,13 +627,13 @@ mod test {
                 fire = fire.add_item(ItemId::MediumLog).unwrap();
             }
             if i == 8 {
-                fire = fire.add_multiple_items(ItemId::MediumLog, 2).unwrap();
+                fire = fire.add_items(ItemId::MediumLog, 2).unwrap();
             }
             if i == 20 {
-                fire = fire.add_multiple_items(ItemId::MediumLog, 6).unwrap();
+                fire = fire.add_items(ItemId::MediumLog, 6).unwrap();
             }
             if i == 40 {
-                fire = fire.add_multiple_items(ItemId::LargeLog, 1).unwrap();
+                fire = fire.add_items(ItemId::LargeLog, 1).unwrap();
             }
 
             fire = fire.tick_multiple(15);

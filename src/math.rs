@@ -1,4 +1,4 @@
-pub(crate) fn weighted_mean(data: Vec<(f64, f64)>) -> f64 {
+pub fn weighted_mean(data: Vec<(f64, f64)>) -> f64 {
     let mut sum = 0.0;
     let mut weighting_factor_sum = 0.0;
 
