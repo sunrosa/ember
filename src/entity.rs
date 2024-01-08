@@ -330,6 +330,12 @@ pub struct Fire {
     fresh_fuel_radiates: bool,
     /// The amount the fire should include the ambient temperature in its weighted mean of temperature. This simulates heat escaping into the atmosphere.
     weight_of_ambient: f64,
+    /// The change in temperature during the last tick.
+    temperature_delta: f64,
+    /// The change in ambient temperature during the last tick.
+    ambient_temperature_delta: f64,
+    /// The change in energy remaining during the last tick.
+    energy_remaining_delta: f64,
 }
 
 /// Getters and setters
@@ -463,8 +469,16 @@ impl Fire {
 
     /// Pass time, and progress all items contained in the fire.
     pub fn tick(mut self) -> Self {
+        let ambient_temperature_before = self.ambient_temperature();
+        let temperature_before = self.temperature();
+        let energy_remaining_before = self.energy_remaining();
+
         self = self.tick_items();
         self = self.tick_temperature();
+
+        self.ambient_temperature_delta = self.ambient_temperature() - ambient_temperature_before;
+        self.temperature_delta = self.temperature() - temperature_before;
+        self.energy_remaining_delta = self.energy_remaining() - energy_remaining_before;
 
         self
     }
