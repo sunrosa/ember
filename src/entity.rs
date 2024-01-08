@@ -397,7 +397,7 @@ impl Fire {
             ambient_temperature: 295.15,
             tick_resolution: 1.0,
             fresh_fuel_radiates: false,
-            weight_of_ambient: 2000.0,
+            weight_of_ambient: 3000.0,
         }
     }
 
