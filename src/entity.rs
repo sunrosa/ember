@@ -312,6 +312,18 @@ impl Fire {
         Ok(self)
     }
 
+    pub fn add_multiple_items(
+        mut self,
+        item_type: ItemId,
+        count: u32,
+    ) -> Result<Self, BurnItemError> {
+        for i in 0..count {
+            self.items.push(BurningItem::new(item_type)?);
+        }
+
+        Ok(self)
+    }
+
     pub fn summary(&self) -> String {
         let mut output = String::new();
 
@@ -532,15 +544,7 @@ mod test {
 
     #[test]
     fn target_temperature_1() {
-        let fire = Fire::init()
-            .add_item(Twig)
-            .unwrap()
-            .add_item(Twig)
-            .unwrap()
-            .add_item(Twig)
-            .unwrap()
-            .add_item(Twig)
-            .unwrap();
+        let fire = Fire::init().add_multiple_items(Twig, 4).unwrap();
         assert_approx_eq!(fire.target_temperature(), 858.137012);
     }
 
