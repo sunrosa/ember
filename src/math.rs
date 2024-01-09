@@ -143,7 +143,18 @@ mod test {
         }
 
         #[test]
-        fn saturating_set_min() {
+        fn saturating_set() {
+            assert_eq!(
+                BoundedStat::new(1.0, 5.0)
+                    .unwrap()
+                    .saturating_set(3.0)
+                    .current(),
+                3.0
+            )
+        }
+
+        #[test]
+        fn saturating_set_min_0() {
             assert_eq!(
                 BoundedStat::new(1.0, 5.0)
                     .unwrap()
@@ -154,11 +165,33 @@ mod test {
         }
 
         #[test]
-        fn saturating_set_max() {
+        fn saturating_set_min_1() {
+            assert_eq!(
+                BoundedStat::new(1.0, 5.0)
+                    .unwrap()
+                    .saturating_set(0.0)
+                    .current(),
+                0.0
+            )
+        }
+
+        #[test]
+        fn saturating_set_max_0() {
             assert_eq!(
                 BoundedStat::new(1.0, 5.0)
                     .unwrap()
                     .saturating_set(10.0)
+                    .current(),
+                5.0
+            )
+        }
+
+        #[test]
+        fn saturating_set_max_1() {
+            assert_eq!(
+                BoundedStat::new(1.0, 5.0)
+                    .unwrap()
+                    .saturating_set(5.0)
                     .current(),
                 5.0
             )

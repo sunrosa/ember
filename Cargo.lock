@@ -34,6 +34,7 @@ name = "ember"
 version = "0.1.0"
 dependencies = [
  "assert_approx_eq",
+ "more-asserts",
  "rustyline",
 ]
 
@@ -102,6 +103,12 @@ name = "memchr"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "523dc4f511e55ab87b694dc30d0f820d60906ef06413f93d4d7a1385599cc149"
+
+[[package]]
+name = "more-asserts"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fafa6961cabd9c63bcd77a45d7e3b7f3b552b70417831fb0f56db717e72407e"
 
 [[package]]
 name = "nibble_vec"
