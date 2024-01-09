@@ -1,3 +1,4 @@
+use ember::math::BoundedStat;
 use entity::{Fire, ItemId};
 
 mod entity;

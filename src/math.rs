@@ -1,7 +1,11 @@
+/// The error returned by some [`BoundedStat`] functions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoundedStatError {
+    /// Tried to set the [`current`](BoundedStat::current()) value to below zero.
     TooLow,
+    /// Tried to set the [`current`](BoundedStat::current()) value above the [`max`](BoundedStat::max()).
     TooHigh,
+    /// Tried to initialize the [`BoundedStat`] with a [`max`](BoundedStat::max()) below zero.
     MaxBelowZero,
 }
 
@@ -77,6 +81,10 @@ impl BoundedStat {
     }
 }
 
+/// Get the weighted mean of a [`Vec`] of [`f64`] values together with [`f64`] weights.
+///
+/// # Returns
+/// The weighted mean of the [`Vec`].
 pub fn weighted_mean(data: Vec<(f64, f64)>) -> f64 {
     let mut sum = 0.0;
     let mut weighting_factor_sum = 0.0;
