@@ -7,7 +7,7 @@ use thiserror::Error;
 pub enum BoundedFloatError {
     /// Tried to set the [`current`](BoundedFloat::current()) value to below the [`min`](BoundedFloat::min()).
     ///
-    /// # Parameters
+    /// # Fields
     /// * `current` - The current value attempted to be set
     /// * `minimum` - The minimum value
     #[error("Tried to set the current value ({cur}) below minimum ({min})")]
@@ -15,7 +15,7 @@ pub enum BoundedFloatError {
 
     /// Tried to set the [`current`](BoundedFloat::current()) value above the [`max`](BoundedFloat::max()).
     ///
-    /// # Parameters
+    /// # Fields
     /// * `current` - The current value attempted to be set
     /// * `maximum` - The maximum value
     #[error("Tried to set the current value ({cur}) above maximum ({max})")]
@@ -23,7 +23,7 @@ pub enum BoundedFloatError {
 
     /// Tried to initialize the [`BoundedFloat`] with a [`max`](BoundedFloat::max()) below [`min`](BoundedFloat::min()).
     ///
-    /// # Parameters
+    /// # Fields
     /// * `minimum` - The minimum value
     /// * `maximum` - The maximum value
     #[error("Tried to set the maximum ({max}) below the minimum ({min})")]
