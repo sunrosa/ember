@@ -20,9 +20,18 @@ fn debug_fire() {
          game\" to quit.\n"
     );
 
+    // The number of ticks between turns
+    let ticks_per_turn = 5;
+
     let mut fire = Fire::init();
-    loop {
+    let mut burned_out = false;
+    let mut ticks_lasted = 0;
+    while !burned_out {
+        // Use below for multi-tick approximation for deltas
+        // println!("{}", fire.summary_multiple_ticks(ticks_per_turn));
         println!("{}", fire.summary());
+
+        ticks_lasted += ticks_per_turn;
 
         let selection = Select::new(
             "Add to fire >",
@@ -63,6 +72,17 @@ fn debug_fire() {
             ));
         }
 
-        fire = fire.tick_multiple(5);
+        fire = fire.tick_multiple(ticks_per_turn);
+
+        burned_out = !fire.is_burning();
+    }
+
+    if burned_out {
+        println!("{}", fire.summary());
+        println!(
+            "Your fire has burned out after {} turns ({} ticks)!",
+            ticks_lasted / ticks_per_turn,
+            ticks_lasted
+        );
     }
 }

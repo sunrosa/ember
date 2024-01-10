@@ -444,20 +444,25 @@ impl Fire {
         Ok(self)
     }
 
-    /// Basic summary string for printing out to a user interface.
+    /// Basic summary string for printing out one tick's infomation to a user interface.
     pub fn summary(&self) -> String {
+        self.summary_multiple_ticks(1)
+    }
+
+    /// Print out a summary with deltas from `ticks` ticks.
+    pub fn summary_multiple_ticks(&self, ticks: u32) -> String {
         let mut output = String::new();
 
         output += &format!(
-            "TEMPERATURE: {:.0}K ({:.2})\nBURNING ENERGY: {:.0} ({:.0}%)\nFRESH ENERGY: {:.0} \
-             ({:.0}%)\nENERGY DELTA: {:.2}\n",
+            "TEMPERATURE: {:.0}K ({:.2})\nBURNING ENERGY: {:.0} ({:.0}%) ({:.2})\nFRESH ENERGY: \
+             {:.0} ({:.0}%)\n",
             self.temperature(),
-            self.temperature_delta(),
+            self.temperature_delta() * ticks as f64,
             self.burning_energy_remaining(),
             self.burning_energy_remaining() / self.energy_remaining() * 100.0,
+            self.energy_remaining_delta() * ticks as f64,
             self.fresh_energy_remaining(),
             self.fresh_energy_remaining() / self.energy_remaining() * 100.0,
-            self.energy_remaining_delta(),
         );
 
         output += "===========================\n";
@@ -555,6 +560,13 @@ impl Fire {
         self.energy_remaining_delta = self.energy_remaining() - energy_remaining_before;
 
         self
+    }
+
+    /// Is the fire currently burning? Returns `true` if any items in the fire are currently burning, else `false`.
+    pub fn is_burning(&self) -> bool {
+        self.items
+            .iter()
+            .any(|x| x.burned_state == BurnedState::Burning)
     }
 
     /// Tick `count` times
