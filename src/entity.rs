@@ -449,10 +449,13 @@ impl Fire {
         let mut output = String::new();
 
         output += &format!(
-            "TEMPERATURE: {:.0}K ({:.2})\nENERGY: {:.0} ({:.2})\n",
+            "TEMPERATURE: {:.0}K ({:.2})\nBURNING ENERGY: {:.0} ({:.0}%)\nFRESH ENERGY: {:.0} ({:.0}%)\nENERGY DELTA: {:.2}\n",
             self.temperature(),
             self.temperature_delta(),
-            self.energy_remaining(),
+            self.burning_energy_remaining(),
+            self.burning_energy_remaining() / self.energy_remaining() * 100.0,
+            self.fresh_energy_remaining(),
+            self.fresh_energy_remaining() / self.energy_remaining() * 100.0,
             self.energy_remaining_delta(),
         );
 
@@ -491,6 +494,34 @@ impl Fire {
     pub fn energy_remaining(&self) -> f64 {
         let mut output = 0.0;
         for item in &self.items {
+            output += item.remaining_energy;
+        }
+
+        output
+    }
+
+    /// The total energy remaining in _exclusively_ the burning items in the fire.
+    pub fn burning_energy_remaining(&self) -> f64 {
+        let mut output = 0.0;
+        for item in self
+            .items
+            .iter()
+            .filter(|x| x.burned_state == BurnedState::Burning)
+        {
+            output += item.remaining_energy;
+        }
+
+        output
+    }
+
+    /// The total energy remaining in _exclusively_ the fresh items in the fire.
+    pub fn fresh_energy_remaining(&self) -> f64 {
+        let mut output = 0.0;
+        for item in self
+            .items
+            .iter()
+            .filter(|x| x.burned_state == BurnedState::Fresh)
+        {
             output += item.remaining_energy;
         }
 

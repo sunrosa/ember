@@ -15,7 +15,7 @@ fn debug_fire() {
         "Keep your fire alive. Fire information will be updated each turn. Add \"None\" to \
          progress the turn. If you add too much to your fire at once, it will steal its thermal \
          energy and it will go out. If you don't add to the fire quickly enough, it will go out \
-         to fuel exhaustion"
+         to fuel exhaustion\n"
     );
 
     let mut fire = Fire::init();
