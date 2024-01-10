@@ -1,7 +1,5 @@
 use std::ops::{Add, Deref, Div, Mul, Sub};
 
-use num_traits::{Bounded, SaturatingAdd};
-
 /// The error returned by some [`BoundedStat`] functions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoundedFloatError {
@@ -211,6 +209,16 @@ impl Div<f64> for BoundedFloat {
     }
 }
 
+impl PartialEq<f64> for BoundedFloat {
+    fn eq(&self, other: &f64) -> bool {
+        self.current() == *other
+    }
+
+    fn ne(&self, other: &f64) -> bool {
+        self.current() != *other
+    }
+}
+
 /// Get the weighted mean of a [`Vec`] of [`f64`] values together with [`f64`] weights.
 ///
 /// # Returns
@@ -260,18 +268,37 @@ mod test {
 
         #[test]
         fn saturating_add() {
-            assert_eq!(
-                (BoundedFloat::new_zero_min(0.0, 2.0).unwrap() + 5.0).current(),
-                2.0
-            )
+            assert_eq!(BoundedFloat::new_zero_min(0.0, 2.0).unwrap() + 1.2, 1.2)
+        }
+
+        #[test]
+        fn saturating_add_max() {
+            assert_eq!(BoundedFloat::new_zero_min(0.0, 2.0).unwrap() + 5.0, 2.0)
         }
 
         #[test]
         fn saturating_sub() {
-            assert_eq!(
-                (BoundedFloat::new_zero_min(1.0, 2.0).unwrap() - 5.0).current(),
-                0.0
-            )
+            assert_eq!(BoundedFloat::new_zero_min(1.0, 2.0).unwrap() - 0.5, 0.5)
+        }
+
+        #[test]
+        fn saturating_sub_min() {
+            assert_eq!(BoundedFloat::new_zero_min(1.0, 2.0).unwrap() - 5.0, 0.0)
+        }
+
+        #[test]
+        fn saturating_mul() {
+            assert_eq!(BoundedFloat::new_zero_min(3.0, 20.0).unwrap() * 4.0, 12.0);
+        }
+
+        #[test]
+        fn saturating_mul_max() {
+            assert_eq!(BoundedFloat::new_zero_min(3.0, 10.0).unwrap() * 4.0, 10.0);
+        }
+
+        #[test]
+        fn saturating_div() {
+            assert_eq!(BoundedFloat::new_zero_min(12.0, 20.0).unwrap() / 3.0, 4.0);
         }
 
         #[test]
@@ -279,8 +306,7 @@ mod test {
             assert_eq!(
                 BoundedFloat::new_zero_min(1.0, 5.0)
                     .unwrap()
-                    .saturating_set(3.0)
-                    .current(),
+                    .saturating_set(3.0),
                 3.0
             )
         }
@@ -290,8 +316,7 @@ mod test {
             assert_eq!(
                 BoundedFloat::new_zero_min(1.0, 5.0)
                     .unwrap()
-                    .saturating_set(-1.0)
-                    .current(),
+                    .saturating_set(-1.0),
                 0.0
             )
         }
@@ -301,8 +326,7 @@ mod test {
             assert_eq!(
                 BoundedFloat::new_zero_min(1.0, 5.0)
                     .unwrap()
-                    .saturating_set(0.0)
-                    .current(),
+                    .saturating_set(0.0),
                 0.0
             )
         }
@@ -312,8 +336,7 @@ mod test {
             assert_eq!(
                 BoundedFloat::new_zero_min(1.0, 5.0)
                     .unwrap()
-                    .saturating_set(10.0)
-                    .current(),
+                    .saturating_set(10.0),
                 5.0
             )
         }
@@ -323,8 +346,7 @@ mod test {
             assert_eq!(
                 BoundedFloat::new_zero_min(1.0, 5.0)
                     .unwrap()
-                    .saturating_set(5.0)
-                    .current(),
+                    .saturating_set(5.0),
                 5.0
             )
         }

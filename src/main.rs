@@ -1,4 +1,3 @@
-use ember::math::BoundedFloat;
 use entity::{Fire, ItemId};
 
 mod entity;
