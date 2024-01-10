@@ -37,13 +37,13 @@ impl Player {
 
     /// Deal `hp` damage to the player.
     pub fn damage(mut self, hp: f64) -> Self {
-        self.hit_points.saturating_sub(hp);
+        self.hit_points - hp;
         self
     }
 
     /// Heal the player for `hp`.
     pub fn heal(mut self, hp: f64) -> Self {
-        self.hit_points.saturating_add(hp);
+        self.hit_points + hp;
         self
     }
 }

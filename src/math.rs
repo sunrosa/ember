@@ -261,10 +261,7 @@ mod test {
         #[test]
         fn saturating_add() {
             assert_eq!(
-                BoundedFloat::new_zero_min(0.0, 2.0)
-                    .unwrap()
-                    .saturating_add(5.0)
-                    .current(),
+                (BoundedFloat::new_zero_min(0.0, 2.0).unwrap() + 5.0).current(),
                 2.0
             )
         }
@@ -272,10 +269,7 @@ mod test {
         #[test]
         fn saturating_sub() {
             assert_eq!(
-                BoundedFloat::new_zero_min(1.0, 2.0)
-                    .unwrap()
-                    .saturating_sub(5.0)
-                    .current(),
+                (BoundedFloat::new_zero_min(1.0, 2.0).unwrap() - 5.0).current(),
                 0.0
             )
         }
