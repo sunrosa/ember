@@ -449,7 +449,8 @@ impl Fire {
         let mut output = String::new();
 
         output += &format!(
-            "TEMPERATURE: {:.0}K ({:.2})\nBURNING ENERGY: {:.0} ({:.0}%)\nFRESH ENERGY: {:.0} ({:.0}%)\nENERGY DELTA: {:.2}\n",
+            "TEMPERATURE: {:.0}K ({:.2})\nBURNING ENERGY: {:.0} ({:.0}%)\nFRESH ENERGY: {:.0} \
+             ({:.0}%)\nENERGY DELTA: {:.2}\n",
             self.temperature(),
             self.temperature_delta(),
             self.burning_energy_remaining(),
@@ -461,11 +462,17 @@ impl Fire {
 
         output += "===========================\n";
 
-        for item in self
+        for (i, item) in self
             .items
             .iter()
             .filter(|x| x.burned_state == BurnedState::Fresh)
+            .enumerate()
         {
+            if i > 15 {
+                output += "...\n";
+                break;
+            }
+
             output += &format!(
                 "HEATING {}: {:.0}%\n",
                 item.item.name.to_uppercase(),
@@ -475,11 +482,17 @@ impl Fire {
 
         output += "===========================\n";
 
-        for item in self
+        for (i, item) in self
             .items
             .iter()
             .filter(|x| x.burned_state == BurnedState::Burning)
+            .enumerate()
         {
+            if i > 15 {
+                output += "...\n";
+                break;
+            }
+
             output += &format!(
                 "BURNING {}: {:.0}%\n",
                 item.item.name.to_uppercase(),
@@ -559,7 +572,7 @@ impl Fire {
             let target_temperature = self.target_temperature();
             let temperature_difference = target_temperature - self.temperature;
             self.temperature = self.temperature()
-                + ((temperature_difference / (0.024 * self.energy_remaining()))
+                + ((temperature_difference / (100.0/* * self.energy_remaining() */))
                     * self.tick_resolution());
         } else {
             self.temperature = self.ambient_temperature();
