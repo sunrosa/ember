@@ -25,52 +25,64 @@ fn debug_fire() {
 
     let mut fire = Fire::init();
     let mut burned_out = false;
+    let mut quitting_game = false;
     let mut ticks_lasted = 0;
+    let mut ticks_at_quit_game = None;
     while !burned_out {
         // Use below for multi-tick approximation for deltas
         // println!("{}", fire.summary_multiple_ticks(ticks_per_turn));
-        println!("{}", fire.summary());
+        if !quitting_game {
+            println!("{}", fire.summary());
+        }
+
+
+        // Bypass user input if they decide to quit.
+        if !quitting_game {
+            let selection = Select::new(
+                "Add to fire >",
+                vec![
+                    "None",
+                    "Twig",
+                    "Small stick",
+                    "Medium stick",
+                    "Large stick",
+                    "Medium log",
+                    "Large log",
+                    "Quit game",
+                ],
+            )
+            .prompt();
+
+            if let Some(item) = match selection.unwrap() {
+                "Quit game" => {
+                    quitting_game = true;
+                    ticks_at_quit_game = Some(ticks_lasted);
+                    None
+                }
+                "None" => None,
+                "Twig" => Some(Twig),
+                "Small stick" => Some(SmallStick),
+                "Medium stick" => Some(MediumStick),
+                "Large stick" => Some(LargeStick),
+                "Medium log" => Some(MediumLog),
+                "Large log" => Some(LargeLog),
+                e => unreachable!(
+                    "Sunrosa made a typo in the prompt match expression. Please report this \
+                     incident with ahead context: \"{}\"",
+                    e
+                ),
+            } {
+                let count = CustomType::<u32>::new("Add how many >").prompt().unwrap();
+
+                fire = fire.add_items(item, count).expect(&format!(
+                    "Sunrosa fucked up with her fuel definitions. Please report this incident \
+                     with the ahead context: \"{:?}\"",
+                    item
+                ));
+            }
+        }
 
         ticks_lasted += ticks_per_turn;
-
-        let selection = Select::new(
-            "Add to fire >",
-            vec![
-                "None",
-                "Twig",
-                "Small stick",
-                "Medium stick",
-                "Large stick",
-                "Medium log",
-                "Large log",
-                "Quit game",
-            ],
-        )
-        .prompt();
-
-        if let Some(item) = match selection.unwrap() {
-            "Quit game" => break,
-            "None" => None,
-            "Twig" => Some(Twig),
-            "Small stick" => Some(SmallStick),
-            "Medium stick" => Some(MediumStick),
-            "Large stick" => Some(LargeStick),
-            "Medium log" => Some(MediumLog),
-            "Large log" => Some(LargeLog),
-            e => unreachable!(
-                "Sunrosa made a typo in the prompt match expression. Please report this incident \
-                 with ahead context: \"{}\"",
-                e
-            ),
-        } {
-            let count = CustomType::<u32>::new("Add how many >").prompt().unwrap();
-
-            fire = fire.add_items(item, count).expect(&format!(
-                "Sunrosa fucked up with her fuel definitions. Please report this incident with \
-                 the ahead context: \"{:?}\"",
-                item
-            ));
-        }
 
         fire = fire.tick_multiple(ticks_per_turn);
 
@@ -79,10 +91,24 @@ fn debug_fire() {
 
     if burned_out {
         println!("{}", fire.summary());
-        println!(
-            "Your fire has burned out after {} turns ({} ticks)!",
-            ticks_lasted / ticks_per_turn,
-            ticks_lasted
-        );
+        match ticks_at_quit_game {
+            Some(t) => {
+                println!(
+                    "Your fire has burned out after {} turns ({} ticks)! It continued to last {} \
+                     turns ({} ticks) after you quit.",
+                    ticks_lasted / ticks_per_turn,
+                    ticks_lasted,
+                    (ticks_lasted - t) / ticks_per_turn,
+                    ticks_lasted - t,
+                );
+            }
+            None => {
+                println!(
+                    "Your fire has burned out after {} turns ({} ticks)!",
+                    ticks_lasted / ticks_per_turn,
+                    ticks_lasted
+                );
+            }
+        }
     }
 }
