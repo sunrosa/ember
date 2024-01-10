@@ -572,7 +572,7 @@ impl Fire {
             let target_temperature = self.target_temperature();
             let temperature_difference = target_temperature - self.temperature;
             self.temperature = self.temperature()
-                + ((temperature_difference / (100.0/* * self.energy_remaining() */))
+                + ((temperature_difference / (50.0/* * self.energy_remaining() THIS IS BAD */))
                     * self.tick_resolution());
         } else {
             self.temperature = self.ambient_temperature();
@@ -611,7 +611,7 @@ impl Fire {
     /// Tick each item in the fire.
     fn tick_items(mut self) -> Self {
         // TODO: Get rid of the clone() call here for efficiency. This may be possible through std's Cell, or clever references.
-        for (i, item) in self.items.clone().iter().enumerate() {
+        for (i, item) in self.items.clone().into_iter().enumerate() {
             if item.burned_state == BurnedState::Fresh {
                 *self.items.get_mut(i).unwrap() = self.heat_item_tick(item);
             } else if item.burned_state == BurnedState::Burning {
@@ -626,9 +626,7 @@ impl Fire {
     }
 
     /// Tick an unburning item. Items heat up faster if the fire is hotter.
-    fn heat_item_tick(&self, item: &BurningItem) -> BurningItem {
-        let mut item = item.clone();
-
+    fn heat_item_tick(&self, mut item: BurningItem) -> BurningItem {
         if self.temperature() >= item.fuel.minimum_activation_temperature {
             // Increase activation progress if the fire temperature is above the minimum activation temperature of the item.
             *item.activation_progress.as_mut().unwrap() +=
@@ -638,7 +636,7 @@ impl Fire {
             *item.activation_progress.as_mut().unwrap() -= ((item.fuel.burn_temperature
                 - self.ambient_temperature())
                 * item.activation_percentage())
-                * 0.005
+                * 0.03
                 * self.tick_resolution();
         }
 
@@ -655,14 +653,19 @@ impl Fire {
     }
 
     /// Tick a burning item. Items burn faster if the fire is hotter.
-    fn burn_item_tick(&self, item: &BurningItem) -> BurningItem {
-        let mut item = item.clone();
-
+    fn burn_item_tick(&self, mut item: BurningItem) -> BurningItem {
         item.remaining_energy -= self.temperature() * 0.001 * self.tick_resolution();
 
+        // The item burns out to spent state if it runs out of potential energy.
         if item.remaining_energy <= 0.0 {
             item.burned_state = BurnedState::Spent;
             item.remaining_energy = 0.0;
+        }
+
+        // The item burns out to fresh state if below activation temperature.
+        if self.temperature() < item.fuel.minimum_activation_temperature {
+            item.burned_state = BurnedState::Fresh;
+            item.activation_progress = Some(0.0);
         }
 
         item
