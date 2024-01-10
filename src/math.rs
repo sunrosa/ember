@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 /// The error returned by some [`BoundedStat`] functions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BoundedStatError {
@@ -5,43 +7,55 @@ pub enum BoundedStatError {
     TooLow,
     /// Tried to set the [`current`](BoundedStat::current()) value above the [`max`](BoundedStat::max()).
     TooHigh,
-    /// Tried to initialize the [`BoundedStat`] with a [`max`](BoundedStat::max()) below zero.
-    MaxBelowZero,
+    /// Tried to initialize the [`BoundedStat`] with a [`max`](BoundedStat::max()) below [`min`](BoundedStat::min()).
+    InvalidBounds,
 }
 
-/// A statistic, such as hit points, with a configured maximum, and a minimum of zero.
+/// A [`f64`], with a configured maximum and minimum.
 #[derive(Debug, Clone, Copy)]
-pub struct BoundedStat {
+pub struct BoundedFloat {
     /// The current value.
     current: f64,
+    /// The minimum value.
+    min: f64,
     /// The maximum value.
     max: f64,
 }
 
-impl BoundedStat {
-    /// Create a new [`BoundedStat`]. If `current` is above `max`, this will return [`TooHigh`](BoundedStatError::TooHigh). If `current` is below `0.0`, this will return [`TooLow`](BoundedStatError::TooLow). If `max` is below `0.0`, this will return [`MaxBelowZero`](BoundedStatError::MaxBelowZero).
-    pub fn new(current: f64, max: f64) -> Result<Self, BoundedStatError> {
-        if max < 0.0 {
-            return Err(BoundedStatError::MaxBelowZero);
+impl BoundedFloat {
+    /// Create a new [`BoundedFloat`]. If `current` is above `max`, this will return [`TooHigh`](BoundedStatError::TooHigh). If `current` is below [`min`](Self::min()), this will return [`TooLow`](BoundedStatError::TooLow). If `max` is below [`min`](Self::min()), this will return [`InvalidBounds`](BoundedStatError::InvalidBounds).
+    pub fn new_zero_min(current: f64, max: f64) -> Result<Self, BoundedStatError> {
+        let min = 0.0;
+
+        Self::new(current, min, max)
+    }
+
+    pub fn new(current: f64, min: f64, max: f64) -> Result<Self, BoundedStatError> {
+        if max < min {
+            return Err(BoundedStatError::InvalidBounds);
         }
-        if current < 0.0 {
+        if current < min {
             return Err(BoundedStatError::TooLow);
         }
         if current > max {
             return Err(BoundedStatError::TooHigh);
         }
 
-        Ok(Self { current, max })
+        Ok(Self {
+            current,
+            max,
+            min: min,
+        })
     }
 
-    /// Get the current value. This value is guaranteed to be above `0.0`, and below [`max`](Self::max).
+    /// Get the current value. This value is guaranteed to be above [`min`](Self::min()), and below [`max`](Self::max()).
     pub fn current(&self) -> f64 {
         self.current
     }
 
-    /// Set the current value to `value`. Returns [`TooLow`](BoundedStatError::TooLow) if `value` is below `0.0`, and [`TooHigh`](BoundedStatError::TooHigh) if `value` is above [`max`](Self::max).
+    /// Set the current value to `value`. Returns [`TooLow`](BoundedStatError::TooLow) if `value` is below [`min`](Self::min()), and [`TooHigh`](BoundedStatError::TooHigh) if `value` is above [`max`](Self::max).
     pub fn with_current(mut self, value: f64) -> Result<Self, BoundedStatError> {
-        if value < 0.0 {
+        if value < self.min() {
             return Err(BoundedStatError::TooLow);
         }
         if value > self.max() {
@@ -57,27 +71,57 @@ impl BoundedStat {
         self.max
     }
 
-    /// Set [`current`](Self::current) to `value`, without going below `0.0`, or above [`max`](Self::max).
+    pub fn with_max(mut self, value: f64) -> Result<Self, BoundedStatError> {
+        if value < self.min() {
+            return Err(BoundedStatError::InvalidBounds);
+        }
+
+        self.max = value;
+        Ok(self)
+    }
+
+    pub fn min(&self) -> f64 {
+        self.min
+    }
+
+    pub fn with_min(mut self, value: f64) -> Result<Self, BoundedStatError> {
+        if self.max() < value {
+            return Err(BoundedStatError::InvalidBounds);
+        }
+
+        self.min = value;
+        Ok(self)
+    }
+
+    /// Set [`current`](Self::current) to `value`, without going below [`min`](Self::min()), or above [`max`](Self::max()).
     pub fn saturating_set(mut self, value: f64) -> Self {
         self = match self.with_current(value) {
             Ok(s) => s,
-            Err(BoundedStatError::TooLow) => self.with_current(0.0).unwrap(),
+            Err(BoundedStatError::TooLow) => self.with_current(self.min()).unwrap(),
             Err(BoundedStatError::TooHigh) => self.with_current(self.max()).unwrap(),
             _ => unreachable!(),
         };
         self
     }
 
-    /// Add `value` to [`current`](Self::current), without going beyond [`max`](Self::max).
+    /// Add `value` to [`current`](Self::current), without going beyond [`max`](Self::max()).
     pub fn saturating_add(mut self, value: f64) -> Self {
         self = self.saturating_set(self.current() + value);
         self
     }
 
-    /// Subtract `value` from [`current`](Self::current), without going below `0.0`.
+    /// Subtract `value` from [`current`](Self::current), without going below [`min`](Self::min()).
     pub fn saturating_sub(mut self, value: f64) -> Self {
         self = self.saturating_set(self.current() - value);
         self
+    }
+}
+
+impl Deref for BoundedFloat {
+    type Target = f64;
+
+    fn deref(&self) -> &Self::Target {
+        &self.current
     }
 }
 
@@ -107,15 +151,15 @@ mod test {
         #[test]
         fn new_max_below_zero() {
             assert_eq!(
-                BoundedStat::new(1.0, -1.0).err().unwrap(),
-                BoundedStatError::MaxBelowZero
+                BoundedFloat::new_zero_min(1.0, -1.0).err().unwrap(),
+                BoundedStatError::InvalidBounds
             );
         }
 
         #[test]
         fn new_too_low() {
             assert_eq!(
-                BoundedStat::new(-1.0, 1.0).err().unwrap(),
+                BoundedFloat::new_zero_min(-1.0, 1.0).err().unwrap(),
                 BoundedStatError::TooLow
             );
         }
@@ -123,7 +167,7 @@ mod test {
         #[test]
         fn new_too_high() {
             assert_eq!(
-                BoundedStat::new(2.0, 1.0).err().unwrap(),
+                BoundedFloat::new_zero_min(2.0, 1.0).err().unwrap(),
                 BoundedStatError::TooHigh
             )
         }
@@ -131,7 +175,7 @@ mod test {
         #[test]
         fn saturating_add() {
             assert_eq!(
-                BoundedStat::new(0.0, 2.0)
+                BoundedFloat::new_zero_min(0.0, 2.0)
                     .unwrap()
                     .saturating_add(5.0)
                     .current(),
@@ -142,7 +186,7 @@ mod test {
         #[test]
         fn saturating_sub() {
             assert_eq!(
-                BoundedStat::new(1.0, 2.0)
+                BoundedFloat::new_zero_min(1.0, 2.0)
                     .unwrap()
                     .saturating_sub(5.0)
                     .current(),
@@ -153,7 +197,7 @@ mod test {
         #[test]
         fn saturating_set() {
             assert_eq!(
-                BoundedStat::new(1.0, 5.0)
+                BoundedFloat::new_zero_min(1.0, 5.0)
                     .unwrap()
                     .saturating_set(3.0)
                     .current(),
@@ -164,7 +208,7 @@ mod test {
         #[test]
         fn saturating_set_min_0() {
             assert_eq!(
-                BoundedStat::new(1.0, 5.0)
+                BoundedFloat::new_zero_min(1.0, 5.0)
                     .unwrap()
                     .saturating_set(-1.0)
                     .current(),
@@ -175,7 +219,7 @@ mod test {
         #[test]
         fn saturating_set_min_1() {
             assert_eq!(
-                BoundedStat::new(1.0, 5.0)
+                BoundedFloat::new_zero_min(1.0, 5.0)
                     .unwrap()
                     .saturating_set(0.0)
                     .current(),
@@ -186,7 +230,7 @@ mod test {
         #[test]
         fn saturating_set_max_0() {
             assert_eq!(
-                BoundedStat::new(1.0, 5.0)
+                BoundedFloat::new_zero_min(1.0, 5.0)
                     .unwrap()
                     .saturating_set(10.0)
                     .current(),
@@ -197,7 +241,7 @@ mod test {
         #[test]
         fn saturating_set_max_1() {
             assert_eq!(
-                BoundedStat::new(1.0, 5.0)
+                BoundedFloat::new_zero_min(1.0, 5.0)
                     .unwrap()
                     .saturating_set(5.0)
                     .current(),

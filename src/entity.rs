@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use ItemId::*;
 
-use crate::math::{weighted_mean, BoundedStat};
+use crate::math::{weighted_mean, BoundedFloat};
 
 /// The player that plays the game
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct Player {
     /// The player's hit points
-    hit_points: BoundedStat,
+    hit_points: BoundedFloat,
     /// Body temperature in degrees kelvin
     body_temperature: f64,
     /// The player's inventory
@@ -20,7 +20,7 @@ impl Player {
     /// Create a new [`Player`] with customization. See [`init`](Player::init()) to create a [`Player`] with default parameters.
     pub fn new(max_hp: f64, inventory_capacity: f64) -> Self {
         Self {
-            hit_points: BoundedStat::new(max_hp, max_hp).unwrap(),
+            hit_points: BoundedFloat::new_zero_min(max_hp, max_hp).unwrap(),
             body_temperature: 310.15,
             inventory: Inventory::new(inventory_capacity),
         }
@@ -29,7 +29,7 @@ impl Player {
     /// Create a new _default_ player to start the game with. See the [`new`](Player::new()) function for customization.
     pub fn init() -> Self {
         Self {
-            hit_points: BoundedStat::new(100.0, 100.0).unwrap(),
+            hit_points: BoundedFloat::new_zero_min(100.0, 100.0).unwrap(),
             body_temperature: 310.15,
             inventory: Inventory::new(10000.0),
         }
