@@ -569,6 +569,15 @@ impl Fire {
             .any(|x| x.burned_state == BurnedState::Burning)
     }
 
+    /// Does the fire have fresh items?
+    ///
+    /// **Warning**: This will return true if the fire has burned out.
+    pub fn has_fresh_items(&self) -> bool {
+        self.items
+            .iter()
+            .any(|x| x.burned_state == BurnedState::Fresh)
+    }
+
     /// Tick `count` times
     pub fn tick_multiple(mut self, count: u32) -> Self {
         for _ in 0..count {
