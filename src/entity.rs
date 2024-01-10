@@ -37,13 +37,13 @@ impl Player {
 
     /// Deal `hp` damage to the player.
     pub fn damage(mut self, hp: f64) -> Self {
-        self.hit_points - hp;
+        self.hit_points = self.hit_points - hp;
         self
     }
 
     /// Heal the player for `hp`.
     pub fn heal(mut self, hp: f64) -> Self {
-        self.hit_points + hp;
+        self.hit_points = self.hit_points + hp;
         self
     }
 }
@@ -205,7 +205,6 @@ impl ItemId {
                 activation_coefficient: 1.5,
                 minimum_activation_temperature: 673.15,
             }),
-            _ => None,
         }
     }
 
@@ -525,7 +524,7 @@ impl Fire {
 
     /// Update the temperature of the entire fire for one tick, depending on [Self::tick_time]. The temperature will jump rapidly toward the target when it's far from the it, but be asymptotic toward it as it gets close. If the number of burning items becomes zero, set the fire's temperature to the ambient temperature. The temperature moves more quickly if the fire has less thermal inertia (energy remaining).
     fn tick_temperature(mut self) -> Self {
-        if self.items.len() != 0 {
+        if !self.items.is_empty() {
             let target_temperature = self.target_temperature();
             let temperature_difference = target_temperature - self.temperature;
             self.temperature = self.temperature()

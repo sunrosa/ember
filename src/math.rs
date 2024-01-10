@@ -59,11 +59,7 @@ impl BoundedFloat {
             return Err(BoundedFloatError::TooHigh { cur: current, max });
         }
 
-        Ok(Self {
-            current,
-            max,
-            min: min,
-        })
+        Ok(Self { current, max, min })
     }
 
     /// Create a new [`BoundedFloat`] with a [`min`](Self::min()) of `0.0`. If `current` is above `max`, this will return [`TooHigh`](BoundedFloatError::TooHigh). If `current` is below [`min`](Self::min()), this will return [`TooLow`](BoundedFloatError::TooLow). If `max` is below [`min`](Self::min()), this will return [`InvalidBounds`](BoundedFloatError::InvalidBounds).
@@ -247,10 +243,6 @@ impl Div<f64> for BoundedFloat {
 impl PartialEq<f64> for BoundedFloat {
     fn eq(&self, other: &f64) -> bool {
         self.current() == *other
-    }
-
-    fn ne(&self, other: &f64) -> bool {
-        self.current() != *other
     }
 }
 
