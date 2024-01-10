@@ -1,3 +1,5 @@
+#![feature(assert_matches)]
+
 use entity::{Fire, ItemId};
 
 mod entity;

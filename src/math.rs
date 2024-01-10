@@ -1,14 +1,33 @@
 use std::ops::{Add, Deref, Div, Mul, Sub};
 
-/// The error returned by some [`BoundedStat`] functions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+use thiserror::Error;
+
+/// The error returned by some [`BoundedFloat`] functions.
+#[derive(Debug, Clone, Copy, Error)]
 pub enum BoundedFloatError {
-    /// Tried to set the [`current`](BoundedStat::current()) value to below zero.
-    TooLow,
-    /// Tried to set the [`current`](BoundedStat::current()) value above the [`max`](BoundedStat::max()).
-    TooHigh,
-    /// Tried to initialize the [`BoundedStat`] with a [`max`](BoundedStat::max()) below [`min`](BoundedStat::min()).
-    InvalidBounds,
+    /// Tried to set the [`current`](BoundedFloat::current()) value to below the [`min`](BoundedFloat::min()).
+    ///
+    /// # Parameters
+    /// * `current` - The current value attempted to be set
+    /// * `minimum` - The minimum value
+    #[error("Tried to set the current value ({cur}) below minimum ({min})")]
+    TooLow { cur: f64, min: f64 },
+
+    /// Tried to set the [`current`](BoundedFloat::current()) value above the [`max`](BoundedFloat::max()).
+    ///
+    /// # Parameters
+    /// * `current` - The current value attempted to be set
+    /// * `maximum` - The maximum value
+    #[error("Tried to set the current value ({cur}) above maximum ({max})")]
+    TooHigh { cur: f64, max: f64 },
+
+    /// Tried to initialize the [`BoundedFloat`] with a [`max`](BoundedFloat::max()) below [`min`](BoundedFloat::min()).
+    ///
+    /// # Parameters
+    /// * `minimum` - The minimum value
+    /// * `maximum` - The maximum value
+    #[error("Tried to set the maximum ({max}) below the minimum ({min})")]
+    InvalidBounds { min: f64, max: f64 },
 }
 
 /// A [`f64`], with a configured maximum and minimum.
@@ -23,7 +42,7 @@ pub struct BoundedFloat {
 }
 
 impl BoundedFloat {
-    /// Create a new [`BoundedFloat`]. If `current` is above `max`, this will return [`TooHigh`](BoundedStatError::TooHigh). If `current` is below [`min`](Self::min()), this will return [`TooLow`](BoundedStatError::TooLow). If `max` is below [`min`](Self::min()), this will return [`InvalidBounds`](BoundedStatError::InvalidBounds).
+    /// Create a new [`BoundedFloat`]. If `current` is above `max`, this will return [`TooHigh`](BoundedFloatError::TooHigh). If `current` is below [`min`](Self::min()), this will return [`TooLow`](BoundedFloatError::TooLow). If `max` is below [`min`](Self::min()), this will return [`InvalidBounds`](BoundedFloatError::InvalidBounds).
     ///
     /// # Parameters
     /// * `current` - The value to start with.
@@ -31,13 +50,13 @@ impl BoundedFloat {
     /// * `max` - The maximum bound that the value cannot go beyond.
     pub fn new(current: f64, min: f64, max: f64) -> Result<Self, BoundedFloatError> {
         if max < min {
-            return Err(BoundedFloatError::InvalidBounds);
+            return Err(BoundedFloatError::InvalidBounds { max, min });
         }
         if current < min {
-            return Err(BoundedFloatError::TooLow);
+            return Err(BoundedFloatError::TooLow { cur: current, min });
         }
         if current > max {
-            return Err(BoundedFloatError::TooHigh);
+            return Err(BoundedFloatError::TooHigh { cur: current, max });
         }
 
         Ok(Self {
@@ -47,7 +66,7 @@ impl BoundedFloat {
         })
     }
 
-    /// Create a new [`BoundedFloat`] with a [`min`](Self::min()) of `0.0`. If `current` is above `max`, this will return [`TooHigh`](BoundedStatError::TooHigh). If `current` is below [`min`](Self::min()), this will return [`TooLow`](BoundedStatError::TooLow). If `max` is below [`min`](Self::min()), this will return [`InvalidBounds`](BoundedStatError::InvalidBounds).
+    /// Create a new [`BoundedFloat`] with a [`min`](Self::min()) of `0.0`. If `current` is above `max`, this will return [`TooHigh`](BoundedFloatError::TooHigh). If `current` is below [`min`](Self::min()), this will return [`TooLow`](BoundedFloatError::TooLow). If `max` is below [`min`](Self::min()), this will return [`InvalidBounds`](BoundedFloatError::InvalidBounds).
     ///
     /// # Parameters
     /// * `current` - The value to start with.
@@ -63,13 +82,19 @@ impl BoundedFloat {
         self.current
     }
 
-    /// Set the current value to `value`. Returns [`TooLow`](BoundedStatError::TooLow) if `value` is below [`min`](Self::min()), and [`TooHigh`](BoundedStatError::TooHigh) if `value` is above [`max`](Self::max).
+    /// Set the current value to `value`. Returns [`TooLow`](BoundedFloatError::TooLow) if `value` is below [`min`](Self::min()), and [`TooHigh`](BoundedFloatError::TooHigh) if `value` is above [`max`](Self::max).
     pub fn with_current(mut self, value: f64) -> Result<Self, BoundedFloatError> {
         if value < self.min() {
-            return Err(BoundedFloatError::TooLow);
+            return Err(BoundedFloatError::TooLow {
+                cur: value,
+                min: self.min(),
+            });
         }
         if value > self.max() {
-            return Err(BoundedFloatError::TooHigh);
+            return Err(BoundedFloatError::TooHigh {
+                cur: value,
+                max: self.max(),
+            });
         }
 
         self.current = value;
@@ -83,7 +108,10 @@ impl BoundedFloat {
 
     pub fn with_max(mut self, value: f64) -> Result<Self, BoundedFloatError> {
         if value < self.min() {
-            return Err(BoundedFloatError::InvalidBounds);
+            return Err(BoundedFloatError::InvalidBounds {
+                max: self.max(),
+                min: self.min(),
+            });
         }
 
         self.max = value;
@@ -96,7 +124,10 @@ impl BoundedFloat {
 
     pub fn with_min(mut self, value: f64) -> Result<Self, BoundedFloatError> {
         if self.max() < value {
-            return Err(BoundedFloatError::InvalidBounds);
+            return Err(BoundedFloatError::InvalidBounds {
+                max: self.max(),
+                min: self.min(),
+            });
         }
 
         self.min = value;
@@ -107,8 +138,12 @@ impl BoundedFloat {
     pub fn saturating_set(mut self, value: f64) -> Self {
         self = match self.with_current(value) {
             Ok(s) => s,
-            Err(BoundedFloatError::TooLow) => self.with_current(self.min()).unwrap(),
-            Err(BoundedFloatError::TooHigh) => self.with_current(self.max()).unwrap(),
+            Err(BoundedFloatError::TooLow { cur: _, min: _ }) => {
+                self.with_current(self.min()).unwrap()
+            }
+            Err(BoundedFloatError::TooHigh { cur: _, max: _ }) => {
+                self.with_current(self.max()).unwrap()
+            }
             _ => unreachable!(),
         };
         self
@@ -239,30 +274,32 @@ pub fn weighted_mean(data: Vec<(f64, f64)>) -> f64 {
 mod test {
     use super::*;
 
+    use std::assert_matches::assert_matches;
+
     mod bounded_stat {
         use super::*;
 
         #[test]
         fn new_max_below_zero() {
-            assert_eq!(
+            assert_matches!(
                 BoundedFloat::new_zero_min(1.0, -1.0).err().unwrap(),
-                BoundedFloatError::InvalidBounds
+                BoundedFloatError::InvalidBounds { max: _, min: _ }
             );
         }
 
         #[test]
         fn new_too_low() {
-            assert_eq!(
+            assert_matches!(
                 BoundedFloat::new_zero_min(-1.0, 1.0).err().unwrap(),
-                BoundedFloatError::TooLow
+                BoundedFloatError::TooLow { cur: _, min: _ }
             );
         }
 
         #[test]
         fn new_too_high() {
-            assert_eq!(
+            assert_matches!(
                 BoundedFloat::new_zero_min(2.0, 1.0).err().unwrap(),
-                BoundedFloatError::TooHigh
+                BoundedFloatError::TooHigh { cur: _, max: _ }
             )
         }
 
