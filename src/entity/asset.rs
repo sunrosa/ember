@@ -1,3 +1,5 @@
+use thiserror::Error;
+
 use super::*;
 
 impl ItemId {
@@ -108,5 +110,36 @@ impl ItemId {
             }),
             _ => None,
         }
+    }
+}
+
+/// Error obtaining an asset from asset definitions
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, Error)]
+pub enum AssetError {
+    /// Asset not found
+    #[error("Asset not found: {0:?}")]
+    NotFound(ItemId),
+}
+
+impl From<ItemId> for Item {
+    fn from(value: ItemId) -> Self {
+        value.item()
+    }
+}
+
+impl TryFrom<ItemId> for FuelItem {
+    type Error = AssetError;
+
+    fn try_from(value: ItemId) -> Result<Self, Self::Error> {
+        value.fuel().ok_or(AssetError::NotFound(value))
+    }
+}
+
+impl TryFrom<ItemId> for WeaponItem {
+    type Error = AssetError;
+
+    fn try_from(value: ItemId) -> Result<Self, Self::Error> {
+        value.weapon().ok_or(AssetError::NotFound(value))
     }
 }
