@@ -54,6 +54,16 @@ impl Player {
     }
 }
 
+#[derive(Clone, Copy, Debug, Error)]
+pub enum InventoryError {
+    /// The item does not exist in the inventory.
+    #[error("The item {0:?} does not exist in the inventory.")]
+    NotFound(ItemId),
+    /// Not enough of the item to be taken from the inventory.
+    #[error("Not enough of the item {0:?} to take from the inventory.")]
+    NotEnough(ItemId),
+}
+
 /// An inventory of items
 #[non_exhaustive]
 #[derive(Debug, Clone)]
@@ -85,6 +95,64 @@ impl Inventory {
     pub fn with_capacity(mut self, value: f64) -> Self {
         self.capacity = value;
         self
+    }
+
+    /// Insert an item into the inventory.
+    ///
+    /// # Parameters
+    /// * `item` - The item to insert
+    /// * `count` - The amount of the item to insert
+    pub fn insert(&mut self, item: ItemId, count: u32) {
+        *self.items.entry(item).or_default() += count;
+    }
+
+    /// Take `count` `item`s from the inventory, removing them in-place.
+    ///
+    /// # Returns
+    /// * [`InventoryError::NotEnough`] - if not enough of the item exist in the inventory
+    /// * [`InventoryError::NotFound`] - if no record of the item exists in the inventory
+    pub fn take_amount(&mut self, item: ItemId, count: u32) -> Result<(), InventoryError> {
+        // If none of the item exist in the inventory
+        if !self.items.contains_key(&item) {
+            return Err(InventoryError::NotFound(item));
+        }
+
+        let entry = self.items.entry(item).or_default();
+
+        // If too few items of the chosen kind are in the inventory
+        if *entry < count {
+            return Err(InventoryError::NotEnough(item));
+        }
+
+        // Actually subtract the item count
+        *entry = entry.saturating_sub(count);
+
+        // Remove the item from the items hashmap if its count is 0.
+        if *entry == 0 {
+            self.items.remove(&item);
+        }
+
+        Ok(())
+    }
+
+    /// Take all of `item` from the inventory. Removing them in-place.
+    ///
+    /// # Returns
+    /// * Ok - The number of items taken
+    /// * [`InventoryError::NotFound`] - if a record of the item does not exist in the inventory
+    pub fn take_all(&mut self, item: ItemId) -> Result<u32, InventoryError> {
+        // If none of the item exist in the inventory
+        if !self.items.contains_key(&item) {
+            return Err(InventoryError::NotFound(item));
+        }
+
+        // Get the amount of items of that certain kind
+        let amount = *self.items.get(&item).expect("This should be unreachable.");
+
+        // Remove those items
+        self.items.remove(&item);
+
+        Ok(amount)
     }
 }
 
@@ -120,7 +188,7 @@ pub struct WeaponItem {
 }
 
 /// Here are all item IDs in the game. Contained methods can be used to fetch static item data (like mass and burn temperature). The only thing stored is the item's type. Item data cannot be modified.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum ItemId {
     Twig,
     SmallStick,
