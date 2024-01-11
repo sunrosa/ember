@@ -1,6 +1,9 @@
 #![feature(assert_matches)]
 
-use entity::{Fire, ItemId::*};
+use entity::{
+    Fire,
+    ItemId::{self, *},
+};
 use inquire::{CustomType, Select};
 
 mod entity;
@@ -39,7 +42,11 @@ fn debug_fire() {
 
         // Halt the skipping of heating if heating is complete.
         if skip_heating && !fire.has_fresh_items() {
-            println!("Skipped {} turns ({} ticks)", (ticks_passed - ticks_at_skipped_heating.unwrap()) / ticks_per_turn, ticks_passed - ticks_at_skipped_heating.unwrap());
+            println!(
+                "Skipped {} turns ({} ticks)",
+                (ticks_passed - ticks_at_skipped_heating.unwrap()) / ticks_per_turn,
+                ticks_passed - ticks_at_skipped_heating.unwrap()
+            );
             ticks_at_skipped_heating = None;
             skip_heating = false;
         }

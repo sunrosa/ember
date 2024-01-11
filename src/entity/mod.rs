@@ -4,6 +4,9 @@ use ItemId::*;
 
 use crate::math::{weighted_mean, BoundedFloat};
 
+mod asset;
+mod test;
+
 /// The player that plays the game
 #[non_exhaustive]
 #[derive(Debug, Clone)]
@@ -123,117 +126,6 @@ pub enum ItemId {
     MediumLog,
     LargeLog,
     Leaves,
-}
-
-impl ItemId {
-    /// Get an item's base data from asset definitions.
-    pub fn item(&self) -> Item {
-        match self {
-            Twig => Item {
-                name: "twig".into(),
-                mass: 10.0,
-            },
-            SmallStick => Item {
-                name: "small stick".into(),
-                mass: 500.0,
-            },
-            MediumStick => Item {
-                name: "medium stick".into(),
-                mass: 1000.0,
-            },
-            LargeStick => Item {
-                name: "large stick".into(),
-                mass: 2000.0,
-            },
-            MediumLog => Item {
-                name: "medium log".into(),
-                mass: 3500.0,
-            },
-            LargeLog => Item {
-                name: "large log".into(),
-                mass: 5000.0,
-            },
-            Leaves => Item {
-                name: "dry leaf handful".into(),
-                mass: 100.0,
-            },
-        }
-    }
-
-    /// Get an item's fuel data from asset definitions. Returns [`None`] if the item is not a [`FuelItem`].
-    pub fn fuel(&self) -> Option<FuelItem> {
-        match self {
-            Twig => Some(FuelItem {
-                burn_energy: 10.0,
-                burn_temperature: 873.15,
-                activation_coefficient: 0.50,
-                minimum_activation_temperature: 533.15,
-            }),
-            SmallStick => Some(FuelItem {
-                burn_energy: 500.0,
-                burn_temperature: 873.15,
-                activation_coefficient: 0.50,
-                minimum_activation_temperature: 533.15,
-            }),
-            MediumStick => Some(FuelItem {
-                burn_energy: 1000.0,
-                burn_temperature: 873.15,
-                activation_coefficient: 0.50,
-                minimum_activation_temperature: 533.15,
-            }),
-            LargeStick => Some(FuelItem {
-                burn_energy: 2000.0,
-                burn_temperature: 873.15,
-                activation_coefficient: 0.50,
-                minimum_activation_temperature: 533.15,
-            }),
-            MediumLog => Some(FuelItem {
-                burn_energy: 3500.0,
-                burn_temperature: 873.15,
-                activation_coefficient: 0.50,
-                minimum_activation_temperature: 533.15,
-            }),
-            LargeLog => Some(FuelItem {
-                burn_energy: 5000.0,
-                burn_temperature: 873.15,
-                activation_coefficient: 0.50,
-                minimum_activation_temperature: 533.15,
-            }),
-            Leaves => Some(FuelItem {
-                burn_energy: 100.0,
-                burn_temperature: 773.15,
-                activation_coefficient: 1.5,
-                minimum_activation_temperature: 673.15,
-            }),
-        }
-    }
-
-    /// Get an item's weapon data from asset definitions. Returns [`None`] if the item is not a [`WeaponItem`].
-    pub fn weapon(&self) -> Option<WeaponItem> {
-        match self {
-            SmallStick => Some(WeaponItem {
-                hit_chance: 0.35,
-                hit_damage: (2.0, 4.0),
-            }),
-            MediumStick => Some(WeaponItem {
-                hit_chance: 0.4,
-                hit_damage: (4.0, 6.0),
-            }),
-            LargeStick => Some(WeaponItem {
-                hit_chance: 0.5,
-                hit_damage: (8.0, 15.0),
-            }),
-            MediumLog => Some(WeaponItem {
-                hit_chance: 0.3,
-                hit_damage: (6.0, 17.5),
-            }),
-            LargeLog => Some(WeaponItem {
-                hit_chance: 0.2,
-                hit_damage: (8.0, 20.0),
-            }),
-            _ => None,
-        }
-    }
 }
 
 /// An error thrown when trying to construct a [`BurningItem`].
@@ -690,85 +582,5 @@ impl Fire {
         }
 
         item
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    use assert_approx_eq::assert_approx_eq;
-
-    #[test]
-    fn tick_temperature() {
-        let mut fire = Fire::init().add_item(LargeLog).unwrap();
-        for i in 0..20 {
-            match i {
-                0 => assert_approx_eq!(fire.temperature(), 873.15),
-                4 => assert_approx_eq!(fire.temperature(), 861.858756),
-                9 => assert_approx_eq!(fire.temperature(), 848.147083),
-                14 => assert_approx_eq!(fire.temperature(), 834.869289),
-                19 => assert_approx_eq!(fire.temperature(), 822.011643),
-                _ => {}
-            }
-            fire = fire.tick_temperature();
-        }
-    }
-
-    #[test]
-    fn target_temperature_0() {
-        assert_eq!(Fire::init().target_temperature(), 873.15);
-    }
-
-    #[test]
-    fn target_temperature_1() {
-        let fire = Fire::init().add_items(Twig, 4).unwrap();
-        assert_approx_eq!(fire.target_temperature(), 858.137012);
-    }
-
-    #[test]
-    fn target_temperature_2() {
-        let fire = Fire::init().add_item(LargeLog).unwrap();
-        assert_approx_eq!(fire.target_temperature(), 428.534615);
-    }
-
-    #[test]
-    fn fire() {
-        let mut fire = Fire::init().add_items(ItemId::SmallStick, 5).unwrap();
-        fire = fire.with_tick_resolution(5.0);
-        for i in 0..135 {
-            if i == 1 {
-                fire = fire.add_items(ItemId::MediumStick, 5).unwrap();
-            }
-            if i == 5 {
-                fire = fire.add_items(ItemId::MediumStick, 10).unwrap();
-            }
-            if i == 5 {
-                fire = fire.add_item(ItemId::MediumStick).unwrap();
-            }
-            if i == 6 {
-                fire = fire.add_item(ItemId::MediumLog).unwrap();
-            }
-            if i == 7 {
-                fire = fire.add_item(ItemId::MediumLog).unwrap();
-            }
-            if i == 8 {
-                fire = fire.add_items(ItemId::MediumLog, 2).unwrap();
-            }
-            if i == 20 {
-                fire = fire.add_items(ItemId::MediumLog, 6).unwrap();
-            }
-            if i == 40 {
-                fire = fire.add_items(ItemId::LargeLog, 1).unwrap();
-            }
-
-            fire = fire.tick_multiple(15);
-        }
-
-        assert_eq!(
-            fire.energy_remaining(),
-            0.0,
-            "The fire should have burned through the entirety of the fuel, but it did not."
-        );
     }
 }
