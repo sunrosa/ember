@@ -266,33 +266,31 @@ pub fn weighted_mean(data: Vec<(f64, f64)>) -> f64 {
 mod test {
     use super::*;
 
-    use std::assert_matches::assert_matches;
-
     mod bounded_stat {
         use super::*;
 
         #[test]
         fn new_max_below_zero() {
-            assert_matches!(
+            assert!(matches!(
                 BoundedFloat::new_zero_min(1.0, -1.0).err().unwrap(),
                 BoundedFloatError::InvalidBounds { max: _, min: _ }
-            );
+            ));
         }
 
         #[test]
         fn new_too_low() {
-            assert_matches!(
+            assert!(matches!(
                 BoundedFloat::new_zero_min(-1.0, 1.0).err().unwrap(),
                 BoundedFloatError::TooLow { cur: _, min: _ }
-            );
+            ));
         }
 
         #[test]
         fn new_too_high() {
-            assert_matches!(
+            assert!(matches!(
                 BoundedFloat::new_zero_min(2.0, 1.0).err().unwrap(),
                 BoundedFloatError::TooHigh { cur: _, max: _ }
-            )
+            ));
         }
 
         #[test]

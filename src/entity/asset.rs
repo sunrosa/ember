@@ -4,7 +4,7 @@ use super::*;
 
 impl ItemId {
     /// Get an item's base data from asset definitions.
-    pub fn item(&self) -> Item {
+    fn item(&self) -> Item {
         match self {
             Twig => Item {
                 name: "twig".into(),
@@ -38,7 +38,7 @@ impl ItemId {
     }
 
     /// Get an item's fuel data from asset definitions. Returns [`None`] if the item is not a [`FuelItem`].
-    pub fn fuel(&self) -> Option<FuelItem> {
+    fn fuel(&self) -> Option<FuelItem> {
         match self {
             Twig => Some(FuelItem {
                 burn_energy: 10.0,
@@ -86,7 +86,7 @@ impl ItemId {
     }
 
     /// Get an item's weapon data from asset definitions. Returns [`None`] if the item is not a [`WeaponItem`].
-    pub fn weapon(&self) -> Option<WeaponItem> {
+    fn weapon(&self) -> Option<WeaponItem> {
         match self {
             SmallStick => Some(WeaponItem {
                 hit_chance: 0.35,

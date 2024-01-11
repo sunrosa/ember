@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
+use thiserror::Error;
 use ItemId::*;
 
 use crate::math::{weighted_mean, BoundedFloat};
+
+use self::asset::AssetError;
 
 mod asset;
 mod test;
@@ -129,10 +132,11 @@ pub enum ItemId {
 }
 
 /// An error thrown when trying to construct a [`BurningItem`].
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Error)]
 pub enum BurnItemError {
     /// The item in question is not flammable (or simply lacks needed burn properties in asset definitions).
-    NotFlammable,
+    #[error("{0:?} is not a flammable item.")]
+    NotFlammable(ItemId),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -160,13 +164,15 @@ pub struct BurningItem {
 impl BurningItem {
     /// Create a new item that has not yet started to burn, and has full remaining percentage.
     pub fn new(item_type: ItemId) -> Result<Self, BurnItemError> {
-        let Some(fuel) = item_type.fuel() else {
-            return Err(BurnItemError::NotFlammable);
+        let fuel = match FuelItem::try_from(item_type) {
+            Ok(o) => o,
+            Err(AssetError::NotFound(e)) => return Err(BurnItemError::NotFlammable(e)),
         };
+
         let burn_energy = fuel.burn_energy;
 
         Ok(BurningItem {
-            item: item_type.item(),
+            item: item_type.into(),
             fuel,
             remaining_energy: burn_energy,
             activation_progress: Some(0.0),
@@ -179,14 +185,15 @@ impl BurningItem {
         item_type: ItemId,
         remaining_percentage: f64,
     ) -> Result<Self, BurnItemError> {
-        let Some(fuel) = item_type.fuel() else {
-            return Err(BurnItemError::NotFlammable);
+        let fuel = match FuelItem::try_from(item_type) {
+            Ok(o) => o,
+            Err(AssetError::NotFound(e)) => return Err(BurnItemError::NotFlammable(e)),
         };
 
         let burn_energy = fuel.burn_energy;
 
         Ok(BurningItem {
-            item: item_type.item(),
+            item: item_type.into(),
             fuel,
             remaining_energy: burn_energy * remaining_percentage,
             activation_progress: None,
