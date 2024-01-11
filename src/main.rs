@@ -2,7 +2,7 @@ use entity::{
     Fire,
     ItemId::{self, *},
 };
-use inquire::{CustomType, Select};
+use inquire::{validator::Validation, CustomType, Select};
 
 mod entity;
 mod math;
@@ -91,7 +91,18 @@ fn debug_fire() {
                     e
                 ),
             } {
-                let count = CustomType::<u32>::new("Add how many >").prompt().unwrap();
+                let count = CustomType::<u32>::new("Add how many >")
+                    .with_validator(|x: &u32| {
+                        if *x <= 200 {
+                            Ok(Validation::Valid)
+                        } else {
+                            Ok(Validation::Invalid(
+                                "No more than 200 items at a time.".into(),
+                            ))
+                        }
+                    })
+                    .prompt()
+                    .unwrap();
 
                 fire = fire.add_items(item, count).expect(&format!(
                     "Sunrosa fucked up with her fuel definitions. Please report this incident \

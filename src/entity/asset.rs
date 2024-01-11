@@ -8,7 +8,7 @@ impl ItemId {
         match self {
             Twig => Item {
                 name: "twig".into(),
-                mass: 10.0,
+                mass: 25.0,
             },
             SmallStick => Item {
                 name: "small stick".into(),
@@ -41,7 +41,7 @@ impl ItemId {
     fn fuel(&self) -> Option<FuelItem> {
         match self {
             Twig => Some(FuelItem {
-                burn_energy: 10.0,
+                burn_energy: 25.0,
                 burn_temperature: 873.15,
                 activation_coefficient: 0.50,
                 minimum_activation_temperature: 533.15,
