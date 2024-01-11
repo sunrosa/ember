@@ -93,12 +93,12 @@ fn debug_fire() {
             } {
                 let count = CustomType::<u32>::new("Add how many >")
                     .with_validator(|x: &u32| {
-                        if *x <= 200 {
-                            Ok(Validation::Valid)
-                        } else {
+                        if *x > 200 {
                             Ok(Validation::Invalid(
                                 "No more than 200 items at a time.".into(),
                             ))
+                        } else {
+                            Ok(Validation::Valid)
                         }
                     })
                     .prompt()
