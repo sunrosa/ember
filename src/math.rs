@@ -271,26 +271,29 @@ mod test {
 
         #[test]
         fn new_max_below_zero() {
-            assert!(matches!(
-                BoundedFloat::new_zero_min(1.0, -1.0).err().unwrap(),
-                BoundedFloatError::InvalidBounds { max: _, min: _ }
-            ));
+            let lhs = BoundedFloat::new_zero_min(1.0, -1.0).err().unwrap();
+            assert!(
+                matches!(lhs, BoundedFloatError::InvalidBounds { max: _, min: _ }),
+                "{lhs:?}\n{lhs}"
+            );
         }
 
         #[test]
         fn new_too_low() {
-            assert!(matches!(
-                BoundedFloat::new_zero_min(-1.0, 1.0).err().unwrap(),
-                BoundedFloatError::TooLow { cur: _, min: _ }
-            ));
+            let lhs = BoundedFloat::new_zero_min(-1.0, 1.0).err().unwrap();
+            assert!(
+                matches!(lhs, BoundedFloatError::TooLow { cur: _, min: _ }),
+                "{lhs:?}\n{lhs}"
+            );
         }
 
         #[test]
         fn new_too_high() {
-            assert!(matches!(
-                BoundedFloat::new_zero_min(2.0, 1.0).err().unwrap(),
-                BoundedFloatError::TooHigh { cur: _, max: _ }
-            ));
+            let lhs = BoundedFloat::new_zero_min(2.0, 1.0).err().unwrap();
+            assert!(
+                matches!(lhs, BoundedFloatError::TooHigh { cur: _, max: _ }),
+                "{lhs:?}\n{lhs}"
+            );
         }
 
         #[test]
