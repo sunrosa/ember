@@ -1,7 +1,7 @@
-pub mod asset;
+mod asset;
 mod craft;
-pub mod error;
-pub mod fire;
+mod error;
+mod fire;
 mod item;
 mod player;
 mod test;

@@ -11,22 +11,31 @@ use super::*;
 pub struct Fire {
     /// The items that are in the fire's inventory. This includes not-yet-burning items.
     items: Vec<BurningItem>,
+
     /// The current temperature of the fire. This will not change immediately toward the target temperature, but gradually.
     temperature: f64,
+
     /// Ambient temperature around the fire
     ambient_temperature: f64,
+
     /// The amount of time to progress between ticks
     tick_resolution: f64,
-    /// Whether items that are [`BurnedState::Fresh`] should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all, as long as they're above their [`minimum activation temperature`](FuelItem::minimum_activation_temperature).
+
+    /// Whether items that are [`Fresh`](BurnedState::Fresh) should get warmer as their activation progress increases. If this is enabled, those items will be able to continue lighting themselves until they start burning without any assistance at all, as long as they're above their [`minimum activation temperature`](FuelItem::minimum_activation_temperature).
     fresh_fuel_radiates: bool,
+
     /// The amount the fire should include the ambient temperature in its weighted mean of temperature. This simulates heat escaping into the atmosphere.
     weight_of_ambient: f64,
+
     /// The change in temperature during the last tick.
     temperature_delta: f64,
+
     /// The change in ambient temperature during the last tick.
     ambient_temperature_delta: f64,
+
     /// The change in energy remaining during the last tick.
     energy_remaining_delta: f64,
+
     /// The time that the fire has been alive.
     time_alive: f64,
 }
@@ -126,8 +135,8 @@ impl Fire {
 
     /// Add a fresh, unburning item to the fire.
     ///
-    /// # Errors
-    /// Returns [`NotFlammable`](BurnItemError::NotFlammable) if the [`ItemId`] passed in is not of a flammable item.
+    /// # Returns
+    /// * [`Err`]\([`NotFlammable`](BurnItemError::NotFlammable)) - if the [`ItemId`] passed in is not of a flammable item.
     pub fn add_item(mut self, item_type: ItemId) -> Result<Self, BurnItemError> {
         self.items.push(BurningItem::new(item_type)?);
 
@@ -136,8 +145,8 @@ impl Fire {
 
     /// Add [`count`] of the same item to the fire.
     ///
-    /// # Errors
-    /// Returns [`NotFlammable`](BurnItemError::NotFlammable) if the [`ItemId`] passed in is not of a flammable item.
+    /// # Returns
+    /// * [`Err`]\([`NotFlammable`](BurnItemError::NotFlammable)) - if the [`ItemId`] passed in is not of a flammable item.
     pub fn add_items(mut self, item_type: ItemId, count: u32) -> Result<Self, BurnItemError> {
         for _ in 0..count {
             self = self.add_item(item_type)?;
@@ -251,7 +260,7 @@ impl Fire {
     /// Pass time, and progress all items contained in the fire.
     ///
     /// # Returns
-    /// [`TickAfterDead`](FireError::TickAfterDead) - The fire was attempted to be ticked after it had died.
+    /// * [`Err`]\([`BurntOut`](FireError::BurntOut)) - The fire was attempted to be ticked after it had died.
     pub fn tick(&mut self) -> Result<(), FireError> {
         if !self.is_alive() {
             return Err(FireError::BurntOut);

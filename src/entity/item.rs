@@ -10,7 +10,7 @@ use super::*;
 pub struct Inventory {
     /// The type of item held, and the number of that specific item held
     items: HashMap<ItemId, u32>,
-    /// The inventory's used capacity in grams. Bounded to a maximum and a minimum. The minimum is usually `0.0`.
+    /// The inventory's used capacity in grams. Bounded to a maximum and a minimum. The minimum is usually `0.0` by default (and as of now, cannot be changed).
     used_capacity: BoundedFloat,
 }
 
@@ -26,12 +26,16 @@ impl Inventory {
         }
     }
 
-    /// Get the inventory's capacity in grams
+    /// Get the inventory's used capacity in grams
     pub fn used_capacity(&self) -> BoundedFloat {
         self.used_capacity
     }
 
     /// Set the inventory's capacity in grams
+    ///
+    /// # Returns
+    /// * [`Ok`]\([`Self`]) - The inventory with the a new max capacity set
+    /// * [`Err`]\([`InvalidBounds`](BoundedFloatError::InvalidBounds)) - The max capacity was set below `0.0`.
     pub fn with_max_capacity(mut self, value: f64) -> Result<Self, BoundedFloatError> {
         self.used_capacity = self.used_capacity.with_max(value)?;
         Ok(self)
@@ -73,8 +77,9 @@ impl Inventory {
     /// Take 1 `item` from the inventory, removing it in-place.
     ///
     /// # Returns
-    /// * [`InventoryError::NotEnough`] - if not enough of the item exist in the inventory
-    /// * [`InventoryError::NotFound`] - if no record of the item exists in the inventory
+    /// * [`Err`]
+    ///     * [`InventoryError::NotEnough`] - if not enough of the item exist in the inventory
+    ///     * [`InventoryError::NotFound`] - if no record of the item exists in the inventory
     pub fn take_one(&mut self, item: ItemId) -> Result<(), InventoryError> {
         self.take_amount(item, 1)
     }
@@ -82,8 +87,9 @@ impl Inventory {
     /// Take `count` `item`s from the inventory, removing them in-place.
     ///
     /// # Returns
-    /// * [`InventoryError::NotEnough`] - if not enough of the item exist in the inventory
-    /// * [`InventoryError::NotFound`] - if no record of the item exists in the inventory
+    /// * [`Err`]
+    ///     * [`InventoryError::NotEnough`] - if not enough of the item exist in the inventory
+    ///     * [`InventoryError::NotFound`] - if no record of the item exists in the inventory
     pub fn take_amount(&mut self, item: ItemId, count: u32) -> Result<(), InventoryError> {
         // If none of the item exist in the inventory
         if !self.items.contains_key(&item) {
@@ -112,8 +118,9 @@ impl Inventory {
     /// Take all of `item` from the inventory. Removing them in-place.
     ///
     /// # Returns
-    /// * Ok - The number of items taken
-    /// * [`InventoryError::NotFound`] - if a record of the item does not exist in the inventory
+    /// * [`Ok`] - The number of items taken
+    /// * [`Err`]
+    ///     * [`InventoryError::NotFound`] - if a record of the item does not exist in the inventory
     pub fn take_all(&mut self, item: ItemId) -> Result<u32, InventoryError> {
         // If none of the item exist in the inventory
         if !self.items.contains_key(&item) {
@@ -135,11 +142,11 @@ impl Inventory {
         *self.items.get(&item).unwrap_or(&0) >= amount
     }
 
-    /// Does the inventory contain at least each amount of item in `wanted_items`?
+    /// Does the inventory contain __all of__ at least each amount of item in `wanted_items`?
     ///
     /// # Returns
-    /// * true - __All__ items are contained in the inventory.
-    /// * false - Some of the items are missing.
+    /// * `true` - __All__ items are contained in the inventory.
+    /// * `false` - Some of the items are missing.
     pub fn contains_vec(&self, wanted_items: &Vec<(ItemId, u32)>) -> EnoughItems {
         if wanted_items.iter().all(|x| self.contains(x.0, x.1)) {
             EnoughItems::Enough
@@ -158,7 +165,8 @@ impl Inventory {
     ///
     /// # Returns
     /// * [`Ok`] - The items were succesfully taken.
-    /// * [`NotEnoughVec`](InventoryError::NotEnoughVec) - The inventory does not contain enough items to be taken. __No items have been removed.__
+    /// * [`Err`]
+    ///     * [`NotEnoughVec`](InventoryError::NotEnoughVec) - The inventory does not contain enough items to be taken. __No items have been removed.__
     pub fn take_vec_if_enough(
         &mut self,
         wanted_items: &Vec<(ItemId, u32)>,
