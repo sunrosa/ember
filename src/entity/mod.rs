@@ -111,12 +111,12 @@ pub struct InProgressCraft<'a> {
     time_remaining: f64,
 }
 
-// This really, really reminds me of Futures lol. I forgot what this process is called. "Make invalid states unrepresentable" or some shit. I like it a fucking hell of a lot though :3
+// This really, really reminds me of Futures lol. I forgot what this process is called. "Make invalid states unrepresentable" or some shit. I think it's the Finite-State-Machine pattern. I like it a fucking hell of a lot though :3
 impl<'a> InProgressCraft<'a> {
     /// Complete the craft immediately, ticking the fire for however long the craft has remaining, returning the products. This method takes ownership and destroys its receiver.
-    pub fn complete(self, fire: &mut Fire) -> &'a Vec<(ItemId, u32)> {
-        fire.tick_time(self.time_remaining);
-        self.products
+    pub fn complete(self, fire: &mut Fire) -> Result<&'a Vec<(ItemId, u32)>, FireError> {
+        fire.tick_time(self.time_remaining)?;
+        Ok(self.products)
     }
 
     /// Progress the craft by `time` time, "polling" it. This method will take only the time necessary to finish the craft, and not the entire amount of time specified. Because this method takes ownership of its receiver, you will have to use its returned [`CraftResult`] exclusively.
@@ -124,16 +124,16 @@ impl<'a> InProgressCraft<'a> {
     /// # Returns
     /// * [`Ready`](CraftResult::Ready) - The craft has completed.
     /// * [`Pending`](CraftResult::Pending) - There is still more time needed to complete the task.
-    pub fn progress(mut self, fire: &mut Fire, time: f64) -> CraftResult<'a> {
+    pub fn progress(mut self, fire: &mut Fire, time: f64) -> Result<CraftResult<'a>, FireError> {
         if time >= self.time_remaining {
             // Ready
-            fire.tick_time(self.time_remaining);
-            return CraftResult::Ready(self.products);
+            fire.tick_time(self.time_remaining)?;
+            return Ok(CraftResult::Ready(self.products));
         } else {
             // Pending
-            fire.tick_time(time);
+            fire.tick_time(time)?;
             self.time_remaining -= time;
-            CraftResult::Pending(self)
+            Ok(CraftResult::Pending(self))
         }
     }
 }
@@ -746,7 +746,14 @@ impl Fire {
     }
 
     /// Pass time, and progress all items contained in the fire.
-    pub fn tick(&mut self) {
+    ///
+    /// # Returns
+    /// [`TickAfterDead`](FireError::TickAfterDead) - The fire was attempted to be ticked after it had died.
+    pub fn tick(&mut self) -> Result<(), FireError> {
+        if !self.is_alive() {
+            return Err(FireError::TickAfterDead);
+        }
+
         let ambient_temperature_before = self.ambient_temperature();
         let temperature_before = self.temperature();
         let energy_remaining_before = self.energy_remaining();
@@ -759,10 +766,12 @@ impl Fire {
         self.energy_remaining_delta = self.energy_remaining() - energy_remaining_before;
 
         self.time_alive += self.tick_resolution();
+
+        Ok(())
     }
 
     /// Is the fire currently burning? Returns `true` if any items in the fire are currently burning, else `false`.
-    pub fn is_burning(&self) -> bool {
+    pub fn is_alive(&self) -> bool {
         self.items
             .iter()
             .any(|x| x.burned_state == BurnedState::Burning)
@@ -778,15 +787,19 @@ impl Fire {
     }
 
     /// Tick `count` times
-    pub fn tick_multiple(&mut self, count: u32) {
+    pub fn tick_multiple(&mut self, count: u32) -> Result<(), FireError> {
         for _ in 0..count {
-            self.tick();
+            self.tick()?;
         }
+
+        Ok(())
     }
 
     /// Tick for `time` time. Will always tick for greater than or equal to `time`. If [`tick_resolution`](Self::tick_resolution()) is too high, this will lead to great inaccuracy.
-    pub fn tick_time(&mut self, time: f64) {
-        self.tick_multiple(f64::ceil(time / self.tick_resolution()) as u32);
+    pub fn tick_time(&mut self, time: f64) -> Result<(), FireError> {
+        self.tick_multiple(f64::ceil(time / self.tick_resolution()) as u32)?;
+
+        Ok(())
     }
 
     /// Update the temperature of the entire fire for one tick, depending on [Self::tick_time]. The temperature will jump rapidly toward the target when it's far from the it, but be asymptotic toward it as it gets close. If the number of burning items becomes zero, set the fire's temperature to the ambient temperature. The temperature moves more quickly if the fire has less thermal inertia (energy remaining).
@@ -889,6 +902,13 @@ impl Fire {
 
         item
     }
+}
+
+/// An error with [`Fire`]
+#[derive(Clone, Copy, Error, Debug)]
+pub enum FireError {
+    #[error("Can not tick the fire after it has died.")]
+    TickAfterDead,
 }
 
 /// A crafting recipe

@@ -1,5 +1,4 @@
-use ember::entity::{CraftResult, ItemId};
-use entity::Player;
+use entity::FireError;
 use entity::{Fire, ItemId::*};
 use inquire::{validator::Validation, CustomType, Select};
 
@@ -7,14 +6,7 @@ mod entity;
 mod math;
 
 fn main() {
-    let mut fire = Fire::init();
-    let mut player = Player::new(100.0, 20_000.0);
-    player.inventory_mut().insert(MediumStick, 5).unwrap();
-
-    loop {
-        let craft = player.craft(MediumBundle).unwrap().complete(&mut fire);
-        println!("{craft:?}");
-    }
+    debug_fire()
 }
 
 fn debug_fire() {
@@ -31,13 +23,11 @@ fn debug_fire() {
     let ticks_per_turn = 5;
 
     let mut fire = Fire::init();
-    let mut burned_out = false;
     let mut quitting_game = false;
-    let mut ticks_passed = 0u64;
-    let mut ticks_at_quit_game = None;
+    let mut time_at_quit_game = None;
     let mut skip_heating = false;
-    let mut ticks_at_skipped_heating = None;
-    while !burned_out {
+    let mut time_at_skipped_heating = None;
+    loop {
         // Use below for multi-tick approximation for deltas
         // println!("{}", fire.summary_multiple_ticks(ticks_per_turn));
         if !quitting_game {
@@ -47,11 +37,10 @@ fn debug_fire() {
         // Halt the skipping of heating if heating is complete.
         if skip_heating && !fire.has_fresh_items() {
             println!(
-                "Skipped {} turns ({} ticks)",
-                (ticks_passed - ticks_at_skipped_heating.unwrap()) / ticks_per_turn,
-                ticks_passed - ticks_at_skipped_heating.unwrap()
+                "Skipped {} time",
+                fire.time_alive() - time_at_skipped_heating.unwrap()
             );
-            ticks_at_skipped_heating = None;
+            time_at_skipped_heating = None;
             skip_heating = false;
         }
 
@@ -76,13 +65,13 @@ fn debug_fire() {
             if let Some(item) = match selection.unwrap() {
                 "Quit game" => {
                     quitting_game = true;
-                    ticks_at_quit_game = Some(ticks_passed);
+                    time_at_quit_game = Some(fire.time_alive());
                     None
                 }
                 "None" => None,
                 "Skip heating" => {
                     skip_heating = true;
-                    ticks_at_skipped_heating = Some(ticks_passed);
+                    time_at_skipped_heating = Some(fire.time_alive());
                     None
                 }
                 "Twig" => Some(Twig),
@@ -120,33 +109,22 @@ fn debug_fire() {
             }
         }
 
-        ticks_passed += ticks_per_turn;
-
-        fire.tick_multiple(ticks_per_turn as u32);
-
-        burned_out = !fire.is_burning();
+        if let Err(FireError::TickAfterDead) = fire.tick_multiple(ticks_per_turn as u32) {
+            break;
+        }
     }
 
-    if burned_out {
-        println!("{}", fire.summary());
-        match ticks_at_quit_game {
-            Some(t) => {
-                println!(
-                    "Your fire has burned out after {} turns ({} ticks)! It continued to last {} \
-                     turns ({} ticks) after you quit.",
-                    ticks_passed / ticks_per_turn,
-                    ticks_passed,
-                    (ticks_passed - t) / ticks_per_turn,
-                    ticks_passed - t,
+    println!("{}", fire.summary());
+    match time_at_quit_game {
+        Some(t) => {
+            println!(
+                    "Your fire has burned out after {} time! It continued to last {} time after you quit.",
+                    fire.time_alive(),
+                    fire.time_alive() - t
                 );
-            }
-            None => {
-                println!(
-                    "Your fire has burned out after {} turns ({} ticks)!",
-                    ticks_passed / ticks_per_turn,
-                    ticks_passed
-                );
-            }
+        }
+        None => {
+            println!("Your fire has burned out after {} time!", fire.time_alive());
         }
     }
 }
