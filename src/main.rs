@@ -1,4 +1,4 @@
-use entity::{Fire, Inventory, ItemId::*};
+use entity::{Fire, ItemId::*};
 use inquire::{validator::Validation, CustomType, Select};
 
 mod entity;
@@ -13,8 +13,8 @@ fn debug_fire() {
         "Keep your fire alive. Fire information will be updated each turn. Add \"None\" to \
          progress the turn. If you add too much to your fire at once, it will steal its thermal \
          energy and it will go out. If you don't add to the fire quickly enough, it will go out \
-         to fuel exhaustion.\nThis is in no way a completed build of the game. This is just a \
-         debugger for the fire mechanics (...that happen to be largely WIP).\nSelect \"Quit \
+         to fuel exhaustion.\n\nThis is in no way a completed build of the game. This is just a \
+         debugger for the fire mechanics.\n\nSelect \"Quit \
          game\" to quit.\n"
     );
 
@@ -101,11 +101,13 @@ fn debug_fire() {
                     .prompt()
                     .unwrap();
 
-                fire = fire.add_items(item, count).expect(&format!(
-                    "Sunrosa fucked up with her fuel definitions. Please report this incident \
+                fire = fire.add_items(item, count).unwrap_or_else(|_| {
+                    panic!(
+                        "Sunrosa fucked up with her fuel definitions. Please report this incident \
                      with the ahead context: \"{:?}\"",
-                    item
-                ));
+                        item
+                    )
+                });
             }
         }
 

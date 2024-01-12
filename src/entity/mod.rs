@@ -43,13 +43,13 @@ impl Player {
 
     /// Deal `hp` damage to the player.
     pub fn damage(mut self, hp: f64) -> Self {
-        self.hit_points = self.hit_points - hp;
+        self.hit_points -= hp;
         self
     }
 
     /// Heal the player for `hp`.
     pub fn heal(mut self, hp: f64) -> Self {
-        self.hit_points = self.hit_points + hp;
+        self.hit_points += hp;
         self
     }
 }
@@ -240,6 +240,7 @@ pub struct WeaponItem {
 }
 
 /// Here are all item IDs in the game. Contained methods can be used to fetch static item data (like mass and burn temperature). The only thing stored is the item's type. Item data cannot be modified.
+#[non_exhaustive]
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum ItemId {
     Twig,

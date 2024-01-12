@@ -82,6 +82,7 @@ impl ItemId {
                 activation_coefficient: 1.5,
                 minimum_activation_temperature: 673.15,
             }),
+            _ => None,
         }
     }
 
