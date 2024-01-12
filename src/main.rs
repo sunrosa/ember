@@ -1,6 +1,8 @@
-use entity::{Fire, ItemId::*};
+use entity::ItemId::*;
 use entity::{FireError, Player};
 use inquire::{validator::Validation, CustomType, Select};
+
+use crate::entity::Fire;
 
 mod entity;
 mod math;

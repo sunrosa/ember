@@ -5,6 +5,8 @@ use thiserror::Error;
 
 use super::*;
 
+use ItemId::*;
+
 impl ItemId {
     /// Get an item's base data from asset definitions.
     fn item(&self) -> Item {
