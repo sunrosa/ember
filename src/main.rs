@@ -5,9 +5,7 @@ mod entity;
 mod math;
 
 fn main() {
-    let mut inventory = Inventory::new(100.0);
-    inventory.insert(Twig, 3).unwrap();
-    println!("{}", inventory.insert(Twig, 2).unwrap_err());
+    debug_fire();
 }
 
 fn debug_fire() {

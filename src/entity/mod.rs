@@ -121,6 +121,7 @@ impl Inventory {
     pub fn insert(&mut self, item: ItemId, count: u32) -> Result<(), InventoryError> {
         let mass_of_insertion = Item::from(item).mass * count as f64;
 
+        // If the inventory could never store X count of item
         if self.used_capacity().max() < mass_of_insertion {
             return Err(InventoryError::NoCapacity(
                 item,
@@ -129,6 +130,7 @@ impl Inventory {
             ));
         }
 
+        // If the inventory can't store X count of item with its current available capacity
         if self.used_capacity().max_diff() < mass_of_insertion {
             return Err(InventoryError::NoAvailableCapacity {
                 item,
@@ -138,6 +140,7 @@ impl Inventory {
             });
         }
 
+        // Insert the item
         self.used_capacity += mass_of_insertion;
         *self.items.entry(item).or_default() += count;
 
