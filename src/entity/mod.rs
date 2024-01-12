@@ -52,14 +52,7 @@ impl Player {
     }
 
     /// Craft an item, if possible.
-    ///
-    /// # Returns
-    /// The items crafted and the amount that were made of each.
-    pub fn craft(
-        &mut self,
-        item: ItemId,
-        fire: &mut Fire,
-    ) -> Result<&Vec<(ItemId, u32)>, CraftError> {
+    pub fn craft(&mut self, item: ItemId) -> Result<CraftSuccess, CraftError> {
         let compatible_recipes = asset::recipes().filter_product(item);
 
         if compatible_recipes.is_empty() {
@@ -71,8 +64,10 @@ impl Player {
         for recipe in compatible_recipes {
             match self.inventory.take_vec_if_enough(&recipe.ingredients) {
                 Ok(_) => {
-                    fire.tick_time(recipe.craft_time);
-                    return Ok(&recipe.products);
+                    return Ok(CraftSuccess {
+                        products: &recipe.products,
+                        time_taken: recipe.craft_time,
+                    });
                 }
                 Err(InventoryError::NotEnoughVec(e)) => {
                     missing_items = e;
@@ -85,6 +80,12 @@ impl Player {
         // No recipes were found that the player can craft.
         Err(CraftError::MissingIngredients(missing_items))
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct CraftSuccess<'a> {
+    pub products: &'a Vec<(ItemId, u32)>,
+    pub time_taken: f64,
 }
 
 #[derive(Clone, Debug, Error)]

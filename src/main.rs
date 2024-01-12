@@ -9,11 +9,13 @@ fn main() {
     let mut fire = Fire::init();
 
     let mut player = Player::new(100.0, 20_000.0);
-    println!(
-        "ERROR: {}\nTIME ALIVE: {}",
-        player.craft(MediumBundle, &mut fire).unwrap_err(),
-        fire.time_alive()
-    );
+
+    match player.craft(MediumBundle) {
+        Ok(o) => fire.tick_time(o.time_taken),
+        Err(e) => panic!("{e:?}"),
+    }
+
+    println!("{}", fire.time_alive());
 }
 
 fn debug_fire() {
