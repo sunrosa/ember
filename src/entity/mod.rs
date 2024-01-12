@@ -712,3 +712,47 @@ impl Fire {
         item
     }
 }
+
+/// A crafting recipe
+#[derive(Debug, Clone)]
+pub struct Recipe {
+    /// The ingredients for the recipe
+    ///
+    /// # Element fields
+    /// * `0` - The item id
+    /// * `1` - The item count
+    pub ingredients: Vec<(ItemId, u32)>,
+
+    /// The products of the recipe
+    ///
+    /// # Element fields
+    /// * `0` - The item id
+    /// * `1` - The item count
+    pub products: Vec<(ItemId, u32)>,
+}
+
+// The recipe model should probably be const instead of a vec.
+/// A set of crafting recipes
+pub struct RecipeSet {
+    recipes: Vec<Recipe>,
+}
+
+impl RecipeSet {
+    /// Add a recipe
+    pub fn push(&mut self, recipe: Recipe) {
+        self.recipes.push(recipe);
+    }
+
+    /// Fetch a reference to all recipes
+    pub fn all(&self) -> &Vec<Recipe> {
+        &self.recipes
+    }
+
+    /// Find recipes with a specific product
+    pub fn filter_product(&self, product: ItemId) -> Vec<&Recipe> {
+        self.recipes
+            .iter()
+            .filter(|x| x.products.iter().any(|x| x.0 == product))
+            .collect()
+    }
+}
