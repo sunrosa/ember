@@ -42,19 +42,48 @@ impl Player {
     }
 
     /// Deal `hp` damage to the player.
-    pub fn damage(mut self, hp: f64) -> Self {
+    pub fn damage(&mut self, hp: f64) {
         self.hit_points -= hp;
-        self
     }
 
     /// Heal the player for `hp`.
-    pub fn heal(mut self, hp: f64) -> Self {
+    pub fn heal(&mut self, hp: f64) {
         self.hit_points += hp;
-        self
+    }
+
+    /// Craft an item, if possible.
+    ///
+    /// # Returns
+    /// The items crafted and the amount that were made of each.
+    pub fn craft(&mut self, item: ItemId) -> Result<&Vec<(ItemId, u32)>, CraftError> {
+        let mut missing_items = Vec::new();
+        for recipe in asset::recipes().filter_product(item) {
+            match self.inventory.take_vec_if_enough(&recipe.ingredients) {
+                Ok(_) => return Ok(&recipe.products),
+                Err(InventoryError::NotEnoughVec(e)) => {
+                    missing_items = e;
+                    continue;
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        Err(CraftError::MissingIngredients(missing_items))
     }
 }
 
-#[derive(Clone, Copy, Debug, Error)]
+#[derive(Clone, Debug, Error)]
+pub enum CraftError {
+    /// Insufficient ingredients to craft
+    ///
+    /// * `0` - [`Vec`] of Ingredients
+    ///     * `0` - Item
+    ///     * `1` - Amount
+    #[error("Insufficient ingredients to craft: {0:?}")]
+    MissingIngredients(Vec<(ItemId, u32)>),
+}
+
+#[derive(Clone, Debug, Error)]
 pub enum InventoryError {
     /// The item does not exist in the inventory.
     #[error("The item {0:?} does not exist in the inventory.")]
@@ -78,6 +107,10 @@ pub enum InventoryError {
         used_capacity: f64,
         max_capacity: f64,
     },
+
+    /// The following [`Vec`] of items are missing.
+    #[error("The following items are missing: {0:?}")]
+    NotEnoughVec(Vec<(ItemId, u32)>),
 }
 
 /// An inventory of items
@@ -206,6 +239,59 @@ impl Inventory {
 
         Ok(amount)
     }
+
+    /// Does the inventory contain at least `amount` of `item`?
+    pub fn contains(&self, item: ItemId, amount: u32) -> bool {
+        *self.items.get(&item).unwrap_or(&0) >= amount
+    }
+
+    /// Does the inventory contain at least each amount of item in `wanted_items`?
+    ///
+    /// # Returns
+    /// * true - __All__ items are contained in the inventory.
+    /// * false - Some of the items are missing.
+    pub fn contains_vec(&self, wanted_items: &Vec<(ItemId, u32)>) -> EnoughItems {
+        if wanted_items.iter().all(|x| self.contains(x.0, x.1)) {
+            EnoughItems::Enough
+        } else {
+            let mut missing_items = Vec::new();
+            for wanted_item in wanted_items {
+                let difference = wanted_item.1 - self.items.get(&wanted_item.0).unwrap_or(&0);
+                missing_items.push((wanted_item.0, difference));
+            }
+
+            EnoughItems::Missing(missing_items)
+        }
+    }
+
+    /// Take `wanted_items` from this inventory. __Only removes items if all items necessary are present.__
+    ///
+    /// # Returns
+    /// * [`Ok`] - The items were succesfully taken.
+    /// * [`NotEnoughVec`](InventoryError::NotEnoughVec) - The inventory does not contain enough items to be taken. __No items have been removed.__
+    pub fn take_vec_if_enough(
+        &mut self,
+        wanted_items: &Vec<(ItemId, u32)>,
+    ) -> Result<(), InventoryError> {
+        if let EnoughItems::Missing(i) = self.contains_vec(wanted_items) {
+            Err(InventoryError::NotEnoughVec(i))
+        } else {
+            for item in wanted_items {
+                // This unwrap should be unreachable because of the top-level if statement.
+                self.take_amount(item.0, item.1).unwrap();
+            }
+
+            Ok(())
+        }
+    }
+}
+
+/// Result of checking to see if there are enough items in an inventory to craft a recipe
+pub enum EnoughItems {
+    /// There are enough items.
+    Enough,
+    /// The following items are missing. If the inventory partially contains an item necessary, they will be subtracted from this difference.
+    Missing(Vec<(ItemId, u32)>),
 }
 
 /// Base item data present for every item in the game. Extra, optional, information can be found in more specialized structs such as [`FuelItem`] or [`WeaponItem`]. To store an item properly, combine this struct with whatever specialization you desire, and store it in a tuple or a struct of its own through composition.
@@ -738,7 +824,6 @@ pub struct Recipe {
     pub craft_time: f64,
 }
 
-// The recipe model should probably be const instead of a vec.
 /// A set of crafting recipes
 pub struct RecipeSet {
     recipes: Vec<Recipe>,
