@@ -52,6 +52,7 @@ impl Player {
         self.hit_points += hp;
     }
 
+    /// Get a mutable reference to the player's inventory.
     pub fn inventory_mut(&mut self) -> &mut Inventory {
         &mut self.inventory
     }
@@ -59,9 +60,10 @@ impl Player {
     /// Craft an item, if possible, taking the first craftable recipe if there are multiple. This method accounts for all recipes in the global static recipe set, and also for the items in the player's [`inventory`](Self::inventory_mut).
     ///
     /// # Returns
-    /// * [`Ok`]\([`InProgressCraft`]) - A recipe has been found and is ready to begin making progress.
-    /// * [`Err`]\([`MissingIngredients`](CraftError::MissingIngredients)) - A recipe was found in the global static recipe set, but the player does not have sufficient items with which to craft it.
-    /// * [`Err`]\([`NoRecipe`][CraftError::NoRecipe]) - No recipe with the matching product was found.
+    /// * [`Ok`] - A recipe has been found and is ready to begin making progress.
+    /// * [`Err`]
+    ///     * [`MissingIngredients`](CraftError::MissingIngredients) - A recipe was found in the global static recipe set, but the player does not have sufficient items with which to craft it.
+    ///     * [`NoRecipe`][CraftError::NoRecipe] - No recipe with the matching product was found.
     pub fn craft(&mut self, item: ItemId) -> Result<InProgressCraft, CraftError> {
         self.craft_with_set(item, asset::recipes())
     }
@@ -101,7 +103,7 @@ impl Player {
     }
 }
 
-/// In order to complete the craft immediately, call [`complete()`](Self::complete()), and it will tick the fire accordingly. If you have limited time to await the craft, call [`progress`](Self::progress()) to progress the craft by a specified amount of time.
+/// In order to complete the craft immediately, call [`complete()`](Self::complete()), and it will tick the fire accordingly. If you have limited time to await the craft, call [`progress()`](Self::progress()) to progress the craft by a specified amount of time.
 ///
 /// # Development
 /// * Allow for canceling of the craft to return the ingredients back to the player (impossible with the current implementation).
@@ -114,6 +116,10 @@ pub struct InProgressCraft<'a> {
 // This really, really reminds me of Futures lol. I forgot what this process is called. "Make invalid states unrepresentable" or some shit. I think it's the Finite-State-Machine pattern. I like it a fucking hell of a lot though :3
 impl<'a> InProgressCraft<'a> {
     /// Complete the craft immediately, ticking the fire for however long the craft has remaining, returning the products. This method takes ownership and destroys its receiver.
+    ///
+    /// # Returns
+    /// * [`Ok`] - The craft successfully completed.
+    /// * [`Err`]\([`BurntOut`](FireError::BurntOut)) - The fire burnt out while crafting.
     pub fn complete(self, fire: &mut Fire) -> Result<&'a Vec<(ItemId, u32)>, FireError> {
         fire.tick_time(self.time_remaining)?;
         Ok(self.products)
@@ -122,8 +128,10 @@ impl<'a> InProgressCraft<'a> {
     /// Progress the craft by `time` time, "polling" it. This method will take only the time necessary to finish the craft, and not the entire amount of time specified. Because this method takes ownership of its receiver, you will have to use its returned [`CraftResult`] exclusively.
     ///
     /// # Returns
-    /// * [`Ready`](CraftResult::Ready) - The craft has completed.
-    /// * [`Pending`](CraftResult::Pending) - There is still more time needed to complete the task.
+    /// * [`Ok`]
+    ///     * [`Ready`](CraftResult::Ready) - The craft has completed.
+    ///     * [`Pending`](CraftResult::Pending) - There is still more time needed to complete the task.
+    /// * [`Err`]\([`BurntOut`](FireError::BurntOut)) - The fire burnt out while crafting.
     pub fn progress(mut self, fire: &mut Fire, time: f64) -> Result<CraftResult<'a>, FireError> {
         if time >= self.time_remaining {
             // Ready
@@ -167,27 +175,35 @@ pub enum CraftError {
 #[derive(Clone, Debug, Error)]
 pub enum InventoryError {
     /// The item does not exist in the inventory.
+    ///
+    /// * `0` - The item id
     #[error("The item {0:?} does not exist in the inventory.")]
     NotFound(ItemId),
 
     /// Not enough of the item to be taken from the inventory.
+    ///
+    /// * `0` - The item id
+    /// * `1` - The amount of the item in the inventory
     #[error(
         "Not enough of the item {0:?} to take from the inventory. Count {1} are currently available."
     )]
     NotEnough(ItemId, u32),
 
     /// Could never store that many of the item even if the inventory were empty.
+    ///
+    /// * `0` - The item id
+    /// * `1` - The count of the item trying to be stored
+    /// * `2` - The total capacity of the inventory
     #[error("Could never store count {1} of item {0:?}, even when empty.\nTotal capacity: {2}")]
     NoCapacity(ItemId, u32, f64),
 
     /// The inventory does not have the available capacity to store that many of the item.
-    #[error("Not enough available capacity to store count {count} of item {item:?}.\nUsed capacity: {used_capacity}\nTotal capacity: {max_capacity}\n")]
-    NoAvailableCapacity {
-        item: ItemId,
-        count: u32,
-        used_capacity: f64,
-        max_capacity: f64,
-    },
+    ///
+    /// * `0` - The item id
+    /// * `1` - The number of items trying to be stored
+    /// * `2` - The capacity of the inventory
+    #[error("Not enough available capacity to store count {1} of item {0:?}.\nUsed capacity: {}\nTotal capacity: {}\n", .2.current(), .2.max())]
+    NoAvailableCapacity(ItemId, u32, BoundedFloat),
 
     /// The following [`Vec`] of items are missing.
     #[error("The following items are missing: {0:?}")]
@@ -246,12 +262,11 @@ impl Inventory {
 
         // If the inventory can't store X count of item with its current available capacity
         if self.used_capacity().max_diff() < mass_of_insertion {
-            return Err(InventoryError::NoAvailableCapacity {
+            return Err(InventoryError::NoAvailableCapacity(
                 item,
                 count,
-                used_capacity: self.used_capacity().current(),
-                max_capacity: self.used_capacity().max(),
-            });
+                self.used_capacity,
+            ));
         }
 
         // Insert the item
@@ -751,7 +766,7 @@ impl Fire {
     /// [`TickAfterDead`](FireError::TickAfterDead) - The fire was attempted to be ticked after it had died.
     pub fn tick(&mut self) -> Result<(), FireError> {
         if !self.is_alive() {
-            return Err(FireError::TickAfterDead);
+            return Err(FireError::BurntOut);
         }
 
         let ambient_temperature_before = self.ambient_temperature();
@@ -908,7 +923,7 @@ impl Fire {
 #[derive(Clone, Copy, Error, Debug)]
 pub enum FireError {
     #[error("Can not tick the fire after it has died.")]
-    TickAfterDead,
+    BurntOut,
 }
 
 /// A crafting recipe

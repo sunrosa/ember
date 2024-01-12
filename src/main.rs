@@ -1,11 +1,18 @@
-use entity::FireError;
 use entity::{Fire, ItemId::*};
+use entity::{FireError, Player};
 use inquire::{validator::Validation, CustomType, Select};
 
 mod entity;
 mod math;
 
 fn main() {
+    let mut player = Player::init();
+    player.inventory_mut().insert(MediumStick, 8).unwrap();
+    println!(
+        "{}",
+        player.inventory_mut().insert(MediumStick, 10).unwrap_err(),
+    );
+
     debug_fire()
 }
 
@@ -109,7 +116,7 @@ fn debug_fire() {
             }
         }
 
-        if let Err(FireError::TickAfterDead) = fire.tick_multiple(ticks_per_turn as u32) {
+        if let Err(FireError::BurntOut) = fire.tick_multiple(ticks_per_turn as u32) {
             break;
         }
     }
