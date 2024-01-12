@@ -114,3 +114,9 @@ impl RecipeSet {
             .collect()
     }
 }
+
+impl Default for RecipeSet {
+    fn default() -> Self {
+        Self::new()
+    }
+}

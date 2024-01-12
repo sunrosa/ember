@@ -138,7 +138,7 @@ impl ItemId {
     }
 }
 
-static RECIPE_SET: Lazy<RecipeSet> = Lazy::new(|| initialize_recipes());
+static RECIPE_SET: Lazy<RecipeSet> = Lazy::new(initialize_recipes);
 
 fn initialize_recipes() -> RecipeSet {
     let mut set = RecipeSet::new();

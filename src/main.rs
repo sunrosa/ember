@@ -1,5 +1,8 @@
+#![allow(dead_code)]
+#![allow(unused_imports)]
+
+use entity::FireError;
 use entity::ItemId::*;
-use entity::{FireError, Player};
 use inquire::{validator::Validation, CustomType, Select};
 
 use crate::entity::Fire;
@@ -8,13 +11,6 @@ mod entity;
 mod math;
 
 fn main() {
-    let mut player = Player::init();
-    player.inventory_mut().insert(MediumStick, 8).unwrap();
-    println!(
-        "{}",
-        player.inventory_mut().insert(MediumStick, 10).unwrap_err(),
-    );
-
     debug_fire()
 }
 
