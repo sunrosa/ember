@@ -86,6 +86,7 @@ impl Player {
     }
 }
 
+/// In order to complete the craft immediately, call [`complete()`](Self::complete()), and it will tick the fire accordingly. If you have limited time to await the craft, call [`progress`](Self::progress()) to progress the craft by a specified amount of time.
 #[derive(Clone, Debug)]
 pub struct InProgressCraft<'a> {
     products: &'a Vec<(ItemId, u32)>,
@@ -94,13 +95,16 @@ pub struct InProgressCraft<'a> {
 
 // This really, really reminds me of Futures lol. I forgot what this process is called. "Make invalid states unrepresentable" or some shit. I like it a fucking hell of a lot though :3
 impl<'a> InProgressCraft<'a> {
-    /// Complete the craft immediately, ticking the fire for however long the craft has remaining, returning the products.
+    /// Complete the craft immediately, ticking the fire for however long the craft has remaining, returning the products. Because this method takes ownership of its receiver, you will have to use its returned [`CraftResult`] exclusively.
+    ///
+    /// # Returns
+    /// * [`Ready`](CraftResult::Ready) - The craft has completed. This will always be returned.
     pub fn complete(self, fire: &mut Fire) -> CraftResult<'a> {
         fire.tick_time(self.time_remaining);
         CraftResult::Ready(self.products)
     }
 
-    /// Progress the craft by `time` time. This method will take only the time necessary to finish the craft, and not the entire amount of time specified.
+    /// Progress the craft by `time` time, "polling" it. This method will take only the time necessary to finish the craft, and not the entire amount of time specified. Because this method takes ownership of its receiver, you will have to use its returned [`CraftResult`] exclusively.
     ///
     /// # Returns
     /// * [`Ready`](CraftResult::Ready) - The craft has completed.
@@ -118,8 +122,11 @@ impl<'a> InProgressCraft<'a> {
     }
 }
 
+/// The result of "polling" a crafting process
 pub enum CraftResult<'a> {
+    /// The craft is ready. Contained are the item products of the recipe.
     Ready(&'a Vec<(ItemId, u32)>),
+    /// The craft is still pending. Contained is the in-progress craft to be "polled" again.
     Pending(InProgressCraft<'a>),
 }
 
