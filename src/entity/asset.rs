@@ -44,12 +44,12 @@ impl ItemId {
                 description: "A medium-sized handful of dry leaves".into(),
                 mass: 100.0,
             },
-            MediumBundle => Item {
+            SmallBundle => Item {
                 name: "small stick bundle".into(),
                 description: "A bundle of small sticks compressed together to ensure a lesser surface area. This will burn slower than small sticks on their own.".into(),
                 mass: 1000.0
             },
-            LargeBundle => Item {
+            MediumBundle => Item {
                 name: "medium stick bundle".into(),
                 description: "A bundle of medium sticks compressed together to ensure a lesser surface area. This will burn slower than medium sticks on their own.".into(),
                 mass: 2000.0
@@ -102,8 +102,8 @@ impl ItemId {
                 activation_coefficient: 1.5,
                 minimum_activation_temperature: 673.15,
             }),
-            MediumBundle => Some(MediumStick.fuel().unwrap()),
-            LargeBundle => Some(LargeStick.fuel().unwrap()),
+            SmallBundle => Some(MediumStick.fuel().unwrap()),
+            MediumBundle => Some(LargeStick.fuel().unwrap()),
             _ => None,
         }
     }
@@ -142,12 +142,12 @@ fn initialize_recipes() -> RecipeSet {
     let mut set = RecipeSet::new();
     set.push(Recipe {
         ingredients: vec![(SmallStick, 3)],
-        products: vec![(MediumBundle, 1)],
+        products: vec![(SmallBundle, 1)],
         craft_time: 100.0,
     });
     set.push(Recipe {
         ingredients: vec![(MediumStick, 2)],
-        products: vec![(LargeBundle, 1)],
+        products: vec![(MediumBundle, 1)],
         craft_time: 100.0,
     });
 

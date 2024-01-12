@@ -56,8 +56,15 @@ impl Player {
     /// # Returns
     /// The items crafted and the amount that were made of each.
     pub fn craft(&mut self, item: ItemId) -> Result<&Vec<(ItemId, u32)>, CraftError> {
+        let compatible_recipes = asset::recipes().filter_product(item);
+
+        if compatible_recipes.is_empty() {
+            return Err(CraftError::NoRecipe(item));
+        }
+
+        // Search through each of the recipes found for the specified product, and pick the FIRST that is craftable.
         let mut missing_items = Vec::new();
-        for recipe in asset::recipes().filter_product(item) {
+        for recipe in compatible_recipes {
             match self.inventory.take_vec_if_enough(&recipe.ingredients) {
                 Ok(_) => return Ok(&recipe.products),
                 Err(InventoryError::NotEnoughVec(e)) => {
@@ -68,19 +75,26 @@ impl Player {
             }
         }
 
+        // No recipes were found that the player can craft.
         Err(CraftError::MissingIngredients(missing_items))
     }
 }
 
 #[derive(Clone, Debug, Error)]
 pub enum CraftError {
-    /// Insufficient ingredients to craft
+    /// The inventory contains insufficient ingredients to craft.
     ///
     /// * `0` - [`Vec`] of Ingredients
     ///     * `0` - Item
     ///     * `1` - Amount
-    #[error("Insufficient ingredients to craft: {0:?}")]
+    #[error("Insufficient ingredients to craft: {0:?}.")]
     MissingIngredients(Vec<(ItemId, u32)>),
+
+    /// No compatible recipe was found the specified item.
+    ///
+    /// * `0` - The item that was attempted to be crafted
+    #[error("No compatible recipe found to craft: {0:?}.")]
+    NoRecipe(ItemId),
 }
 
 #[derive(Clone, Debug, Error)]
@@ -338,8 +352,8 @@ pub enum ItemId {
     MediumLog,
     LargeLog,
     Leaves,
+    SmallBundle,
     MediumBundle,
-    LargeBundle,
 }
 
 /// An error thrown when trying to construct a [`BurningItem`].

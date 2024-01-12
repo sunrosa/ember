@@ -1,3 +1,4 @@
+use entity::Player;
 use entity::{Fire, ItemId::*};
 use inquire::{validator::Validation, CustomType, Select};
 
@@ -5,7 +6,8 @@ mod entity;
 mod math;
 
 fn main() {
-    debug_fire();
+    let mut player = Player::new(100.0, 20_000.0);
+    println!("{}", player.craft(MediumBundle).unwrap_err());
 }
 
 fn debug_fire() {
