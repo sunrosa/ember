@@ -10,12 +10,17 @@ fn main() {
 
     let mut player = Player::new(100.0, 20_000.0);
 
+    player.inventory_mut().insert(MediumStick, 5).unwrap();
+
     match player.craft(MediumBundle) {
-        Ok(o) => fire.tick_time(o.time_taken),
+        Ok(o) => {
+            println!("Crafted {:?}", o.products);
+            fire.tick_time(o.time_taken)
+        }
         Err(e) => panic!("{e:?}"),
     }
 
-    println!("{}", fire.time_alive());
+    println!("It took {} time", fire.time_alive());
 }
 
 fn debug_fire() {

@@ -51,6 +51,10 @@ impl Player {
         self.hit_points += hp;
     }
 
+    pub fn inventory_mut(&mut self) -> &mut Inventory {
+        &mut self.inventory
+    }
+
     /// Craft an item, if possible.
     pub fn craft(&mut self, item: ItemId) -> Result<CraftSuccess, CraftError> {
         let compatible_recipes = asset::recipes().filter_product(item);
