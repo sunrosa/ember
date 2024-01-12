@@ -133,6 +133,7 @@ impl<'a> InProgressCraft<'a> {
             return CraftResult::Ready(self.products);
         } else {
             // Pending
+            fire.tick_time(time);
             self.time_remaining -= time;
             CraftResult::Pending(self)
         }
@@ -140,6 +141,7 @@ impl<'a> InProgressCraft<'a> {
 }
 
 /// The result of "polling" a crafting process
+#[derive(Debug, Clone)]
 pub enum CraftResult<'a> {
     /// The craft is ready. Contained are the item products of the recipe.
     Ready(&'a Vec<(ItemId, u32)>),

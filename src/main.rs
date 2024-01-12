@@ -1,3 +1,4 @@
+use ember::entity::{CraftResult, ItemId};
 use entity::Player;
 use entity::{Fire, ItemId::*};
 use inquire::{validator::Validation, CustomType, Select};
@@ -14,8 +15,7 @@ fn main() {
 
     match player.craft(MediumBundle) {
         Ok(o) => {
-            println!("Crafted {:?}", o.products);
-            fire.tick_time(o.time_taken)
+            println!("Crafted {:?}", o.progress(&mut fire, 5.0));
         }
         Err(e) => panic!("{e:?}"),
     }
