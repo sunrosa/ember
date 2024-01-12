@@ -1,14 +1,13 @@
-use entity::{
-    Fire,
-    ItemId::{self, *},
-};
+use entity::{Fire, Inventory, ItemId::*};
 use inquire::{validator::Validation, CustomType, Select};
 
 mod entity;
 mod math;
 
 fn main() {
-    debug_fire();
+    let mut inventory = Inventory::new(100.0);
+    inventory.insert(Twig, 3).unwrap();
+    println!("{}", inventory.insert(Twig, 2).unwrap_err());
 }
 
 fn debug_fire() {

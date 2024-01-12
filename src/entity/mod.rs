@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 use ItemId::*;
 
-use crate::math::{weighted_mean, BoundedFloat};
+use crate::math::{weighted_mean, BoundedFloat, BoundedFloatError};
 
 use self::asset::AssetError;
 
@@ -59,9 +59,25 @@ pub enum InventoryError {
     /// The item does not exist in the inventory.
     #[error("The item {0:?} does not exist in the inventory.")]
     NotFound(ItemId),
+
     /// Not enough of the item to be taken from the inventory.
-    #[error("Not enough of the item {0:?} to take from the inventory.")]
-    NotEnough(ItemId),
+    #[error(
+        "Not enough of the item {0:?} to take from the inventory. Count {1} are currently available."
+    )]
+    NotEnough(ItemId, u32),
+
+    /// Could never store that many of the item even if the inventory were empty.
+    #[error("Could never store count {1} of item {0:?}, even when empty.\nTotal capacity: {2}")]
+    NoCapacity(ItemId, u32, f64),
+
+    /// The inventory does not have the available capacity to store that many of the item.
+    #[error("Not enough available capacity to store count {count} of item {item:?}.\nUsed capacity: {used_capacity}\nTotal capacity: {max_capacity}\n")]
+    NoAvailableCapacity {
+        item: ItemId,
+        count: u32,
+        used_capacity: f64,
+        max_capacity: f64,
+    },
 }
 
 /// An inventory of items
@@ -70,8 +86,8 @@ pub enum InventoryError {
 pub struct Inventory {
     /// The type of item held, and the number of that specific item held
     items: HashMap<ItemId, u32>,
-    /// The inventory's capacity in grams
-    capacity: f64,
+    /// The inventory's used capacity in grams. Bounded to a maximum and a minimum. The minimum is usually `0.0`.
+    used_capacity: BoundedFloat,
 }
 
 impl Inventory {
@@ -82,19 +98,19 @@ impl Inventory {
     pub fn new(capacity: f64) -> Self {
         Inventory {
             items: HashMap::new(),
-            capacity,
+            used_capacity: BoundedFloat::new(0.0, 0.0, capacity).unwrap(),
         }
     }
 
     /// Get the inventory's capacity in grams
-    pub fn capacity(&self) -> f64 {
-        self.capacity
+    pub fn used_capacity(&self) -> BoundedFloat {
+        self.used_capacity
     }
 
     /// Set the inventory's capacity in grams
-    pub fn with_capacity(mut self, value: f64) -> Self {
-        self.capacity = value;
-        self
+    pub fn with_max_capacity(mut self, value: f64) -> Result<Self, BoundedFloatError> {
+        self.used_capacity = self.used_capacity.with_max(value)?;
+        Ok(self)
     }
 
     /// Insert an item into the inventory.
@@ -102,8 +118,39 @@ impl Inventory {
     /// # Parameters
     /// * `item` - The item to insert
     /// * `count` - The amount of the item to insert
-    pub fn insert(&mut self, item: ItemId, count: u32) {
+    pub fn insert(&mut self, item: ItemId, count: u32) -> Result<(), InventoryError> {
+        let mass_of_insertion = Item::from(item).mass * count as f64;
+
+        if self.used_capacity().max() < mass_of_insertion {
+            return Err(InventoryError::NoCapacity(
+                item,
+                count,
+                self.used_capacity().max(),
+            ));
+        }
+
+        if self.used_capacity().max_diff() < mass_of_insertion {
+            return Err(InventoryError::NoAvailableCapacity {
+                item,
+                count,
+                used_capacity: self.used_capacity().current(),
+                max_capacity: self.used_capacity().max(),
+            });
+        }
+
+        self.used_capacity += mass_of_insertion;
         *self.items.entry(item).or_default() += count;
+
+        Ok(())
+    }
+
+    /// Take 1 `item` from the inventory, removing it in-place.
+    ///
+    /// # Returns
+    /// * [`InventoryError::NotEnough`] - if not enough of the item exist in the inventory
+    /// * [`InventoryError::NotFound`] - if no record of the item exists in the inventory
+    pub fn take_one(&mut self, item: ItemId) -> Result<(), InventoryError> {
+        self.take_amount(item, 1)
     }
 
     /// Take `count` `item`s from the inventory, removing them in-place.
@@ -121,10 +168,11 @@ impl Inventory {
 
         // If too few items of the chosen kind are in the inventory
         if *entry < count {
-            return Err(InventoryError::NotEnough(item));
+            return Err(InventoryError::NotEnough(item, count));
         }
 
-        // Actually subtract the item count
+        // Actually subtract the item
+        self.used_capacity -= Item::from(item).mass * count as f64;
         *entry = entry.saturating_sub(count);
 
         // Remove the item from the items hashmap if its count is 0.
@@ -150,6 +198,7 @@ impl Inventory {
         let amount = *self.items.get(&item).expect("This should be unreachable.");
 
         // Remove those items
+        self.used_capacity -= Item::from(item).mass * amount as f64;
         self.items.remove(&item);
 
         Ok(amount)

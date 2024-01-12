@@ -1,4 +1,4 @@
-use std::ops::{Add, Deref, Div, Mul, Sub};
+use std::ops::{Add, AddAssign, Deref, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 use thiserror::Error;
 
@@ -79,7 +79,7 @@ impl BoundedFloat {
     }
 
     /// Set the current value to `value`. Returns [`TooLow`](BoundedFloatError::TooLow) if `value` is below [`min`](Self::min()), and [`TooHigh`](BoundedFloatError::TooHigh) if `value` is above [`max`](Self::max).
-    pub fn with_current(mut self, value: f64) -> Result<Self, BoundedFloatError> {
+    pub fn checked_set(mut self, value: f64) -> Result<Self, BoundedFloatError> {
         if value < self.min() {
             return Err(BoundedFloatError::TooLow {
                 cur: value,
@@ -132,17 +132,22 @@ impl BoundedFloat {
 
     /// Set [`current`](Self::current) to `value`, without going below [`min`](Self::min()), or above [`max`](Self::max()).
     pub fn saturating_set(mut self, value: f64) -> Self {
-        self = match self.with_current(value) {
+        self = match self.checked_set(value) {
             Ok(s) => s,
             Err(BoundedFloatError::TooLow { cur: _, min: _ }) => {
-                self.with_current(self.min()).unwrap()
+                self.checked_set(self.min()).unwrap()
             }
             Err(BoundedFloatError::TooHigh { cur: _, max: _ }) => {
-                self.with_current(self.max()).unwrap()
+                self.checked_set(self.max()).unwrap()
             }
             _ => unreachable!(),
         };
         self
+    }
+
+    /// The difference between [`Self::current()`] and [`Self::max()`]
+    pub fn max_diff(&self) -> f64 {
+        self.max() - self.current()
     }
 
     /// Add `value` to [`current`](Self::current), without going beyond [`max`](Self::max()).
@@ -157,11 +162,13 @@ impl BoundedFloat {
         self
     }
 
+    /// Multiply `value` by [`current`](Self::current), without going above [`max`](Self::max()).
     fn saturating_mul(mut self, value: f64) -> Self {
         self = self.saturating_set(self.current() * value);
         self
     }
 
+    /// Divide `value` by [`current`](Self::current), without going below [`min`](Self::min()).
     fn saturating_div(mut self, value: f64) -> Self {
         self = self.saturating_set(self.current() / value);
         self
@@ -192,6 +199,18 @@ impl Add<f64> for BoundedFloat {
     }
 }
 
+impl AddAssign for BoundedFloat {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = self.saturating_add(rhs.current());
+    }
+}
+
+impl AddAssign<f64> for BoundedFloat {
+    fn add_assign(&mut self, rhs: f64) {
+        *self = self.saturating_add(rhs);
+    }
+}
+
 impl Sub for BoundedFloat {
     type Output = BoundedFloat;
 
@@ -205,6 +224,18 @@ impl Sub<f64> for BoundedFloat {
 
     fn sub(self, rhs: f64) -> Self::Output {
         self.saturating_sub(rhs)
+    }
+}
+
+impl SubAssign for BoundedFloat {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = self.saturating_sub(rhs.current());
+    }
+}
+
+impl SubAssign<f64> for BoundedFloat {
+    fn sub_assign(&mut self, rhs: f64) {
+        *self = self.saturating_sub(rhs);
     }
 }
 
@@ -224,6 +255,18 @@ impl Mul<f64> for BoundedFloat {
     }
 }
 
+impl MulAssign for BoundedFloat {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = self.saturating_mul(rhs.current());
+    }
+}
+
+impl MulAssign<f64> for BoundedFloat {
+    fn mul_assign(&mut self, rhs: f64) {
+        *self = self.saturating_mul(rhs);
+    }
+}
+
 impl Div for BoundedFloat {
     type Output = BoundedFloat;
 
@@ -237,6 +280,18 @@ impl Div<f64> for BoundedFloat {
 
     fn div(self, rhs: f64) -> Self::Output {
         self.saturating_div(rhs)
+    }
+}
+
+impl DivAssign for BoundedFloat {
+    fn div_assign(&mut self, rhs: Self) {
+        *self = self.saturating_div(rhs.current());
+    }
+}
+
+impl DivAssign<f64> for BoundedFloat {
+    fn div_assign(&mut self, rhs: f64) {
+        *self = self.saturating_div(rhs);
     }
 }
 
