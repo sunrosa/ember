@@ -56,7 +56,7 @@ impl Player {
     }
 
     /// Craft an item, if possible.
-    pub fn craft(&mut self, item: ItemId) -> Result<CraftSuccess, CraftError> {
+    pub fn craft(&mut self, item: ItemId) -> Result<InProgressCraft, CraftError> {
         let compatible_recipes = asset::recipes().filter_product(item);
 
         if compatible_recipes.is_empty() {
@@ -68,9 +68,9 @@ impl Player {
         for recipe in compatible_recipes {
             match self.inventory.take_vec_if_enough(&recipe.ingredients) {
                 Ok(_) => {
-                    return Ok(CraftSuccess {
+                    return Ok(InProgressCraft {
                         products: &recipe.products,
-                        time_taken: recipe.craft_time,
+                        time_remaining: recipe.craft_time,
                     });
                 }
                 Err(InventoryError::NotEnoughVec(e)) => {
@@ -87,9 +87,40 @@ impl Player {
 }
 
 #[derive(Clone, Debug)]
-pub struct CraftSuccess<'a> {
-    pub products: &'a Vec<(ItemId, u32)>,
-    pub time_taken: f64,
+pub struct InProgressCraft<'a> {
+    products: &'a Vec<(ItemId, u32)>,
+    time_remaining: f64,
+}
+
+// This really, really reminds me of Futures lol. I forgot what this process is called. "Make invalid states unrepresentable" or some shit. I like it a fucking hell of a lot though :3
+impl<'a> InProgressCraft<'a> {
+    /// Complete the craft immediately, ticking the fire for however long the craft has remaining, returning the products.
+    pub fn complete(self, fire: &mut Fire) -> CraftResult<'a> {
+        fire.tick_time(self.time_remaining);
+        CraftResult::Ready(self.products)
+    }
+
+    /// Progress the craft by `time` time. This method will take only the time necessary to finish the craft, and not the entire amount of time specified.
+    ///
+    /// # Returns
+    /// * [`Ready`](CraftResult::Ready) - The craft has completed.
+    /// * [`Pending`](CraftResult::Pending) - There is still more time needed to complete the task.
+    pub fn progress(mut self, fire: &mut Fire, time: f64) -> CraftResult<'a> {
+        if time >= self.time_remaining {
+            // Ready
+            fire.tick_time(self.time_remaining);
+            return CraftResult::Ready(self.products);
+        } else {
+            // Pending
+            self.time_remaining -= time;
+            CraftResult::Pending(self)
+        }
+    }
+}
+
+pub enum CraftResult<'a> {
+    Ready(&'a Vec<(ItemId, u32)>),
+    Pending(InProgressCraft<'a>),
 }
 
 #[derive(Clone, Debug, Error)]
