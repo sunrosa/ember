@@ -8,19 +8,13 @@ mod math;
 
 fn main() {
     let mut fire = Fire::init();
-
     let mut player = Player::new(100.0, 20_000.0);
-
     player.inventory_mut().insert(MediumStick, 5).unwrap();
 
-    match player.craft(MediumBundle) {
-        Ok(o) => {
-            println!("Crafted {:?}", o.progress(&mut fire, 5.0));
-        }
-        Err(e) => panic!("{e:?}"),
+    loop {
+        let craft = player.craft(MediumBundle).unwrap().complete(&mut fire);
+        println!("{craft:?}");
     }
-
-    println!("It took {} time", fire.time_alive());
 }
 
 fn debug_fire() {

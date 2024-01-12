@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use enum_as_inner::EnumAsInner;
 use thiserror::Error;
 use ItemId::*;
 
@@ -112,13 +113,10 @@ pub struct InProgressCraft<'a> {
 
 // This really, really reminds me of Futures lol. I forgot what this process is called. "Make invalid states unrepresentable" or some shit. I like it a fucking hell of a lot though :3
 impl<'a> InProgressCraft<'a> {
-    /// Complete the craft immediately, ticking the fire for however long the craft has remaining, returning the products. Because this method takes ownership of its receiver, you will have to use its returned [`CraftResult`] exclusively.
-    ///
-    /// # Returns
-    /// * [`Ready`](CraftResult::Ready) - The craft has completed. This will always be returned.
-    pub fn complete(self, fire: &mut Fire) -> CraftResult<'a> {
+    /// Complete the craft immediately, ticking the fire for however long the craft has remaining, returning the products. This method takes ownership and destroys its receiver.
+    pub fn complete(self, fire: &mut Fire) -> &'a Vec<(ItemId, u32)> {
         fire.tick_time(self.time_remaining);
-        CraftResult::Ready(self.products)
+        self.products
     }
 
     /// Progress the craft by `time` time, "polling" it. This method will take only the time necessary to finish the craft, and not the entire amount of time specified. Because this method takes ownership of its receiver, you will have to use its returned [`CraftResult`] exclusively.
@@ -141,7 +139,7 @@ impl<'a> InProgressCraft<'a> {
 }
 
 /// The result of "polling" a crafting process
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, EnumAsInner)]
 pub enum CraftResult<'a> {
     /// The craft is ready. Contained are the item products of the recipe.
     Ready(&'a Vec<(ItemId, u32)>),
