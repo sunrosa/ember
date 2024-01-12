@@ -55,9 +55,23 @@ impl Player {
         &mut self.inventory
     }
 
-    /// Craft an item, if possible.
+    /// Craft an item, if possible, taking the first craftable recipe if there are multiple. This method accounts for all recipes in the global static recipe set, and also for the items in the player's [`inventory`](Self::inventory_mut).
+    ///
+    /// # Returns
+    /// * [`Ok`]\([`InProgressCraft`]) - A recipe has been found and is ready to begin making progress.
+    /// * [`Err`]\([`MissingIngredients`](CraftError::MissingIngredients)) - A recipe was found in the global static recipe set, but the player does not have sufficient items with which to craft it.
+    /// * [`Err`]\([`NoRecipe`][CraftError::NoRecipe]) - No recipe with the matching product was found.
     pub fn craft(&mut self, item: ItemId) -> Result<InProgressCraft, CraftError> {
-        let compatible_recipes = asset::recipes().filter_product(item);
+        self.craft_with_set(item, asset::recipes())
+    }
+
+    /// Implementation of [`Self::craft()`] but with choice for recipe set used. This is unnecessary at the moment, but may be used in the future.
+    fn craft_with_set(
+        &mut self,
+        item: ItemId,
+        recipe_set: &'static RecipeSet,
+    ) -> Result<InProgressCraft, CraftError> {
+        let compatible_recipes = recipe_set.filter_product(item);
 
         if compatible_recipes.is_empty() {
             return Err(CraftError::NoRecipe(item));
@@ -87,6 +101,9 @@ impl Player {
 }
 
 /// In order to complete the craft immediately, call [`complete()`](Self::complete()), and it will tick the fire accordingly. If you have limited time to await the craft, call [`progress`](Self::progress()) to progress the craft by a specified amount of time.
+///
+/// # Development
+/// * Allow for canceling of the craft to return the ingredients back to the player (impossible with the current implementation).
 #[derive(Clone, Debug)]
 pub struct InProgressCraft<'a> {
     products: &'a Vec<(ItemId, u32)>,
