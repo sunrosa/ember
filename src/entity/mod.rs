@@ -213,9 +213,11 @@ impl Inventory {
 /// To retrieve item information from asset definitions, use [`ItemId::item()`], [`ItemId::fuel()`], etc.
 #[derive(Debug, Clone)]
 pub struct Item {
-    /// The name of the item, in English, to be served to the player as they play the game.
+    /// The name of the item, in English, to be served to the player
     pub name: String,
-    /// The mass of the item in grams.
+    /// Description of the item, in English, to be served to the player when queried
+    pub description: String,
+    /// The mass of the item in grams
     pub mass: f64,
 }
 
@@ -250,6 +252,8 @@ pub enum ItemId {
     MediumLog,
     LargeLog,
     Leaves,
+    MediumBundle,
+    LargeBundle,
 }
 
 /// An error thrown when trying to construct a [`BurningItem`].
@@ -729,6 +733,9 @@ pub struct Recipe {
     /// * `0` - The item id
     /// * `1` - The item count
     pub products: Vec<(ItemId, u32)>,
+
+    /// The amount of time it takes to craft the recipe
+    pub craft_time: f64,
 }
 
 // The recipe model should probably be const instead of a vec.
@@ -738,6 +745,13 @@ pub struct RecipeSet {
 }
 
 impl RecipeSet {
+    /// Create a new RecipeSet
+    pub fn new() -> Self {
+        RecipeSet {
+            recipes: Vec::new(),
+        }
+    }
+
     /// Add a recipe
     pub fn push(&mut self, recipe: Recipe) {
         self.recipes.push(recipe);
