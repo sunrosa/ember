@@ -6,8 +6,14 @@ mod entity;
 mod math;
 
 fn main() {
+    let mut fire = Fire::init();
+
     let mut player = Player::new(100.0, 20_000.0);
-    println!("{}", player.craft(MediumBundle).unwrap_err());
+    println!(
+        "ERROR: {}\nTIME ALIVE: {}",
+        player.craft(MediumBundle, &mut fire).unwrap_err(),
+        fire.time_alive()
+    );
 }
 
 fn debug_fire() {
@@ -115,7 +121,7 @@ fn debug_fire() {
 
         ticks_passed += ticks_per_turn;
 
-        fire = fire.tick_multiple(ticks_per_turn as u32);
+        fire.tick_multiple(ticks_per_turn as u32);
 
         burned_out = !fire.is_burning();
     }

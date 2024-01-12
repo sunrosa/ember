@@ -55,7 +55,11 @@ impl Player {
     ///
     /// # Returns
     /// The items crafted and the amount that were made of each.
-    pub fn craft(&mut self, item: ItemId) -> Result<&Vec<(ItemId, u32)>, CraftError> {
+    pub fn craft(
+        &mut self,
+        item: ItemId,
+        fire: &mut Fire,
+    ) -> Result<&Vec<(ItemId, u32)>, CraftError> {
         let compatible_recipes = asset::recipes().filter_product(item);
 
         if compatible_recipes.is_empty() {
@@ -66,7 +70,10 @@ impl Player {
         let mut missing_items = Vec::new();
         for recipe in compatible_recipes {
             match self.inventory.take_vec_if_enough(&recipe.ingredients) {
-                Ok(_) => return Ok(&recipe.products),
+                Ok(_) => {
+                    fire.tick_time(recipe.craft_time);
+                    return Ok(&recipe.products);
+                }
                 Err(InventoryError::NotEnoughVec(e)) => {
                     missing_items = e;
                     continue;
@@ -457,6 +464,8 @@ pub struct Fire {
     ambient_temperature_delta: f64,
     /// The change in energy remaining during the last tick.
     energy_remaining_delta: f64,
+    /// The time that the fire has been alive.
+    time_alive: f64,
 }
 
 /// Getters and setters
@@ -524,6 +533,11 @@ impl Fire {
     pub fn energy_remaining_delta(&self) -> f64 {
         self.energy_remaining_delta
     }
+
+    /// The amount of time that the fire has spent alive.
+    pub fn time_alive(&self) -> f64 {
+        self.time_alive
+    }
 }
 
 impl Fire {
@@ -543,6 +557,7 @@ impl Fire {
             temperature_delta: 0.0,
             energy_remaining_delta: 0.0,
             ambient_temperature_delta: 0.0,
+            time_alive: 0.0,
         }
     }
 
@@ -671,19 +686,19 @@ impl Fire {
     }
 
     /// Pass time, and progress all items contained in the fire.
-    pub fn tick(mut self) -> Self {
+    pub fn tick(&mut self) {
         let ambient_temperature_before = self.ambient_temperature();
         let temperature_before = self.temperature();
         let energy_remaining_before = self.energy_remaining();
 
-        self = self.tick_items();
-        self = self.tick_temperature();
+        self.tick_items();
+        self.tick_temperature();
 
         self.ambient_temperature_delta = self.ambient_temperature() - ambient_temperature_before;
         self.temperature_delta = self.temperature() - temperature_before;
         self.energy_remaining_delta = self.energy_remaining() - energy_remaining_before;
 
-        self
+        self.time_alive += self.tick_resolution();
     }
 
     /// Is the fire currently burning? Returns `true` if any items in the fire are currently burning, else `false`.
@@ -703,16 +718,19 @@ impl Fire {
     }
 
     /// Tick `count` times
-    pub fn tick_multiple(mut self, count: u32) -> Self {
+    pub fn tick_multiple(&mut self, count: u32) {
         for _ in 0..count {
-            self = self.tick();
+            self.tick();
         }
+    }
 
-        self
+    /// Tick for `time` time. Will always tick for greater than or equal to `time`. If [`tick_resolution`](Self::tick_resolution()) is too high, this will lead to great inaccuracy.
+    pub fn tick_time(&mut self, time: f64) {
+        self.tick_multiple(f64::ceil(time / self.tick_resolution()) as u32);
     }
 
     /// Update the temperature of the entire fire for one tick, depending on [Self::tick_time]. The temperature will jump rapidly toward the target when it's far from the it, but be asymptotic toward it as it gets close. If the number of burning items becomes zero, set the fire's temperature to the ambient temperature. The temperature moves more quickly if the fire has less thermal inertia (energy remaining).
-    fn tick_temperature(mut self) -> Self {
+    fn tick_temperature(&mut self) {
         if !self.items.is_empty() {
             let target_temperature = self.target_temperature();
             let temperature_difference = target_temperature - self.temperature;
@@ -722,8 +740,6 @@ impl Fire {
         } else {
             self.temperature = self.ambient_temperature();
         }
-
-        self
     }
 
     /// The temperature the entire fire would be burning at, dependent on its current items, if it had no thermal intertia. This is the target that the fire will trend toward in its inertia calculation in [Self::tick_temperature()].
@@ -754,7 +770,7 @@ impl Fire {
     }
 
     /// Tick each item in the fire.
-    fn tick_items(mut self) -> Self {
+    fn tick_items(&mut self) {
         // TODO: Get rid of the clone() call here for efficiency. This may be possible through std's Cell, or clever references.
         for (i, item) in self.items.clone().into_iter().enumerate() {
             if item.burned_state == BurnedState::Fresh {
@@ -766,8 +782,6 @@ impl Fire {
 
         // Delete items that have been spent.
         self.items.retain(|x| x.burned_state != BurnedState::Spent);
-
-        self
     }
 
     /// Tick an unburning item. Items heat up faster if the fire is hotter.
