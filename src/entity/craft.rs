@@ -8,6 +8,7 @@ use super::*;
 /// * Allow for canceling of the craft to return the ingredients back to the player (impossible with the current implementation).
 #[derive(Clone, Debug)]
 pub struct InProgressCraft {
+    pub(super) ingredients: &'static Vec<(ItemId, u32)>,
     pub(super) products: &'static Vec<(ItemId, u32)>,
     pub(super) time_remaining: f64,
 }
@@ -42,6 +43,14 @@ impl InProgressCraft {
             self.time_remaining -= time;
             Ok(CraftResult::Pending(self))
         }
+    }
+
+    /// Cancel the craft and return its ingredients to be returned back to the player.
+    ///
+    /// # Returns
+    /// * A static reference to the ingredients of the recipe, stored in [`asset`].
+    pub fn cancel(self) -> &'static Vec<(ItemId, u32)> {
+        self.ingredients
     }
 }
 

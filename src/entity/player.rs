@@ -77,6 +77,7 @@ impl Player {
             match self.inventory.take_vec_if_enough(&recipe.ingredients) {
                 Ok(_) => {
                     return Ok(InProgressCraft {
+                        ingredients: &recipe.ingredients,
                         products: &recipe.products,
                         time_remaining: recipe.craft_time,
                     });
