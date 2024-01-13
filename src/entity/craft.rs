@@ -3,7 +3,7 @@ use enum_as_inner::EnumAsInner;
 use super::*;
 
 /// In order to complete the craft immediately, call [`complete()`](Self::complete()), and it will tick the fire accordingly. If you have limited time to await the craft, call [`progress()`](Self::progress()) to progress the craft by a specified amount of time.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct InProgressCraft {
     /// The ingredients of the recipe
     pub(super) ingredients: &'static Vec<(ItemId, u32)>,
@@ -162,5 +162,140 @@ impl RecipeSet {
 impl Default for RecipeSet {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn init() -> (Fire, Player) {
+        let (fire, player) = (Fire::init(), Player::init());
+        assert_eq!(
+            fire.time_alive(),
+            0.0,
+            "The fire should start with 0.0 time passed."
+        );
+
+        (fire, player)
+    }
+
+    #[test]
+    fn no_recipe() {
+        let (_, mut player) = init();
+        let craft = player.craft(ItemId::Twig);
+
+        assert_eq!(craft, Err(CraftError::NoRecipe(ItemId::Twig)));
+    }
+
+    #[test]
+    fn missing_ingredients() {
+        let (_, mut player) = init();
+        let craft = player.craft(ItemId::SmallBundle);
+
+        assert_eq!(
+            craft,
+            Err(CraftError::MissingIngredients(vec![(
+                ItemId::SmallStick,
+                3
+            )]))
+        );
+    }
+
+    #[test]
+    fn craft_progress() {
+        let (mut fire, mut player) = init();
+        player
+            .inventory_mut()
+            .insert(ItemId::SmallStick, 3)
+            .unwrap();
+        let mut craft = player.craft(ItemId::SmallBundle).unwrap();
+
+        craft = craft
+            .progress(&mut fire, 50.0)
+            .unwrap()
+            .into_pending()
+            .unwrap();
+
+        assert_eq!(fire.time_alive(), 50.0);
+
+        let products = craft
+            .progress(&mut fire, 50.0)
+            .unwrap()
+            .into_ready()
+            .unwrap();
+
+        assert_eq!(fire.time_alive(), 100.0);
+        assert_eq!(*products, vec![(ItemId::SmallBundle, 1)]);
+    }
+
+    #[test]
+    fn craft_complete() {
+        let (mut fire, mut player) = init();
+        player
+            .inventory_mut()
+            .insert(ItemId::SmallStick, 3)
+            .unwrap();
+        let products = player
+            .craft(ItemId::SmallBundle)
+            .unwrap()
+            .complete(&mut fire)
+            .unwrap();
+
+        assert_eq!(fire.time_alive(), 100.0);
+        assert_eq!(*products, vec![(ItemId::SmallBundle, 1)]);
+    }
+
+    #[test]
+    fn craft_cancel() {
+        let (mut fire, mut player) = init();
+        player
+            .inventory_mut()
+            .insert(ItemId::SmallStick, 3)
+            .unwrap();
+        let mut craft = player.craft(ItemId::SmallBundle).unwrap();
+
+        craft = craft
+            .progress(&mut fire, 50.0)
+            .unwrap()
+            .into_pending()
+            .unwrap();
+
+        assert_eq!(fire.time_alive(), 50.0);
+
+        let ingredients = craft.cancel(&mut fire).unwrap();
+
+        assert_eq!(fire.time_alive(), 63.0);
+        assert_eq!(*ingredients, vec![(ItemId::SmallStick, 3)]);
+    }
+    #[test]
+    fn craft_progress_cancel() {
+        let (mut fire, mut player) = init();
+        player
+            .inventory_mut()
+            .insert(ItemId::SmallStick, 3)
+            .unwrap();
+        let mut craft = player.craft(ItemId::SmallBundle).unwrap();
+
+        craft = craft
+            .progress(&mut fire, 50.0)
+            .unwrap()
+            .into_pending()
+            .unwrap();
+
+        assert_eq!(fire.time_alive(), 50.0);
+
+        craft = craft
+            .progress_cancel(&mut fire, 10.0)
+            .unwrap()
+            .into_pending()
+            .unwrap();
+
+        assert_eq!(fire.time_alive(), 60.0);
+
+        let ingredients = craft.cancel(&mut fire).unwrap();
+
+        assert_eq!(fire.time_alive(), 63.0);
+        assert_eq!(*ingredients, vec![(ItemId::SmallStick, 3)]);
     }
 }

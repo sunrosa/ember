@@ -3,6 +3,9 @@ use crate::math::BoundedFloat;
 use super::*;
 
 /// The player that plays the game
+///
+/// # Development
+/// * Crafting speed stat
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub struct Player {

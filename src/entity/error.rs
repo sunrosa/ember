@@ -4,7 +4,7 @@ use crate::math::BoundedFloat;
 
 use super::*;
 
-#[derive(Clone, Debug, Error)]
+#[derive(Clone, Debug, Error, PartialEq, Eq)]
 pub enum CraftError {
     /// The inventory contains insufficient ingredients to craft.
     ///
