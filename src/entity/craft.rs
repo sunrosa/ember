@@ -56,7 +56,7 @@ impl InProgressCraft {
         if max_time >= time_remaining {
             // Ready
             fire.tick_time(time_remaining)?;
-            return Ok(CraftResult::Ready(self.products));
+            Ok(CraftResult::Ready(self.products))
         } else {
             // Pending
             fire.tick_time(max_time)?;
@@ -92,7 +92,7 @@ impl InProgressCraft {
         if max_time >= time_left {
             // Ready
             fire.tick_time(time_left)?;
-            return Ok(CraftResult::Ready(self.ingredients));
+            Ok(CraftResult::Ready(self.ingredients))
         } else {
             // Pending
             fire.tick_time(max_time)?;

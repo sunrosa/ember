@@ -39,8 +39,8 @@ impl Player {
             hit_points: BoundedFloat::new_zero_min(max_hp, max_hp).unwrap(),
             body_temperature: 310.15,
             inventory: Inventory::new(inventory_capacity),
-            craft_speed: craft_speed,
-            uncraft_speed: uncraft_speed,
+            craft_speed,
+            uncraft_speed,
         }
     }
 
@@ -97,7 +97,11 @@ impl Player {
         for recipe in compatible_recipes {
             match self.inventory.take_vec_if_enough(&recipe.ingredients) {
                 Ok(_) => {
-                    return Ok(InProgressCraft::new(&recipe, self.craft_speed, self.uncraft_speed));
+                    return Ok(InProgressCraft::new(
+                        recipe,
+                        self.craft_speed,
+                        self.uncraft_speed,
+                    ));
                 }
                 Err(InventoryError::NotEnoughVec(e)) => {
                     missing_items = e;
