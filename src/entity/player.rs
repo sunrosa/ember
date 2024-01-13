@@ -32,13 +32,13 @@ impl Default for Player {
 
 impl Player {
     /// Create a new [`Player`] with customization. See [`init`](Player::init()) to create a [`Player`] with default parameters.
-    pub fn new(max_hp: f64, inventory_capacity: f64) -> Self {
+    pub fn new(max_hp: f64, inventory_capacity: f64, craft_speed: f64, uncraft_speed: f64) -> Self {
         Self {
             hit_points: BoundedFloat::new_zero_min(max_hp, max_hp).unwrap(),
             body_temperature: 310.15,
             inventory: Inventory::new(inventory_capacity),
-            craft_speed: 1.0,
-            uncraft_speed: 4.0,
+            craft_speed: craft_speed,
+            uncraft_speed: uncraft_speed,
         }
     }
 
