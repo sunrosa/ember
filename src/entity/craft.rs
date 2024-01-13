@@ -17,6 +17,10 @@ pub struct InProgressCraft {
 
 // This really, really reminds me of Futures lol. I forgot what this process is called. "Make invalid states unrepresentable" or some shit. I think it's the Finite-State-Machine pattern. I like it a fucking hell of a lot though :3
 impl InProgressCraft {
+    // TODO move this to Player as a field.
+    /// The coefficient of uncrafting. Higher is faster.
+    const UNCRAFT_MULTIPLIER: f64 = 4.0;
+
     /// Finish off the craft now, ticking the fire for however long the craft has remaining, returning the products. This method takes ownership and drops its receiver.
     ///
     /// # Returns
@@ -78,14 +82,14 @@ impl InProgressCraft {
         } else {
             // Pending
             fire.tick_time(max_time)?;
-            self.time_remaining += max_time; // Critically, this INCREASES the time remaining
+            self.time_remaining += max_time * Self::UNCRAFT_MULTIPLIER; // Critically, this INCREASES the time remaining
             Ok(CraftResult::Pending(self))
         }
     }
 
     /// Calculate the time necessary to reverse craft a [`Self`]. Uncrafting is 4x as fast as crafting.
     fn uncraft_time(&self) -> f64 {
-        (self.recipe_time - self.time_remaining) / 4.0
+        (self.recipe_time - self.time_remaining) / Self::UNCRAFT_MULTIPLIER
     }
 }
 
