@@ -13,21 +13,21 @@ pub struct InProgressCraft {
     pub(super) recipe_time: f64,
     /// The amount of time that remains until the recipe is completed
     pub(super) time_remaining: f64,
+    /// The coefficient of craft speed. Higher is faster.
+    pub(super) craft_speed: f64,
+    /// The coefficient of uncraft speed Higher is faster.
+    pub(super) uncraft_speed: f64,
 }
 
 // This really, really reminds me of Futures lol. I forgot what this process is called. "Make invalid states unrepresentable" or some shit. I think it's the Finite-State-Machine pattern. I like it a fucking hell of a lot though :3
 impl InProgressCraft {
-    // TODO move this to Player as a field.
-    /// The coefficient of uncrafting. Higher is faster.
-    const UNCRAFT_MULTIPLIER: f64 = 4.0;
-
     /// Finish off the craft now, ticking the fire for however long the craft has remaining, returning the products. This method takes ownership and drops its receiver.
     ///
     /// # Returns
     /// * [`Ok`] - The craft successfully completed. Contained are the products.
     /// * [`Err`]\([`BurntOut`](FireError::BurntOut)) - The fire burnt out while crafting.
     pub fn complete(self, fire: &mut Fire) -> Result<&'static Vec<(ItemId, u32)>, FireError> {
-        fire.tick_time(self.time_remaining)?;
+        fire.tick_time(self.time_remaining / self.craft_speed)?;
         Ok(self.products)
     }
 
@@ -39,14 +39,17 @@ impl InProgressCraft {
     ///     * [`Pending`](CraftResult::Pending) - There is still more time needed to complete the task.
     /// * [`Err`]\([`BurntOut`](FireError::BurntOut)) - The fire burnt out while crafting.
     pub fn progress(mut self, fire: &mut Fire, max_time: f64) -> Result<CraftResult, FireError> {
-        if max_time >= self.time_remaining {
+        // The actual time remaining.
+        let time_remaining = self.time_remaining / self.craft_speed;
+
+        if max_time >= time_remaining {
             // Ready
-            fire.tick_time(self.time_remaining)?;
+            fire.tick_time(time_remaining)?;
             return Ok(CraftResult::Ready(self.products));
         } else {
             // Pending
             fire.tick_time(max_time)?;
-            self.time_remaining -= max_time;
+            self.time_remaining -= max_time * self.craft_speed;
             Ok(CraftResult::Pending(self))
         }
     }
@@ -82,14 +85,14 @@ impl InProgressCraft {
         } else {
             // Pending
             fire.tick_time(max_time)?;
-            self.time_remaining += max_time * Self::UNCRAFT_MULTIPLIER; // Critically, this INCREASES the time remaining
+            self.time_remaining += max_time * self.uncraft_speed; // Critically, this INCREASES the time remaining
             Ok(CraftResult::Pending(self))
         }
     }
 
     /// Calculate the time necessary to reverse craft a [`Self`]. Uncrafting is 4x as fast as crafting.
     fn uncraft_time(&self) -> f64 {
-        (self.recipe_time - self.time_remaining) / Self::UNCRAFT_MULTIPLIER
+        (self.recipe_time - self.time_remaining) / self.uncraft_speed
     }
 }
 
@@ -174,7 +177,7 @@ mod test {
     use super::*;
 
     fn init() -> (Fire, Player) {
-        let (fire, player) = (Fire::init(), Player::init());
+        let (fire, player) = (Fire::init(), Player::default());
         assert_eq!(
             fire.time_alive(),
             0.0,
@@ -272,6 +275,7 @@ mod test {
         assert_eq!(fire.time_alive(), 63.0);
         assert_eq!(*ingredients, vec![(ItemId::SmallStick, 3)]);
     }
+
     #[test]
     fn craft_progress_cancel() {
         let (mut fire, mut player) = init();

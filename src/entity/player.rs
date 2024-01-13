@@ -14,6 +14,20 @@ pub struct Player {
     body_temperature: f64,
     /// The player's inventory
     inventory: Inventory,
+    craft_speed: f64,
+    uncraft_speed: f64,
+}
+
+impl Default for Player {
+    fn default() -> Self {
+        Self {
+            hit_points: BoundedFloat::new_zero_min(100.0, 100.0).unwrap(),
+            body_temperature: 310.15,
+            inventory: Inventory::new(10000.0),
+            craft_speed: 1.0,
+            uncraft_speed: 4.0,
+        }
+    }
 }
 
 impl Player {
@@ -23,16 +37,19 @@ impl Player {
             hit_points: BoundedFloat::new_zero_min(max_hp, max_hp).unwrap(),
             body_temperature: 310.15,
             inventory: Inventory::new(inventory_capacity),
+            craft_speed: 1.0,
+            uncraft_speed: 4.0,
         }
     }
 
-    /// Create a new _default_ player to start the game with. See the [`new`](Player::new()) function for customization.
-    pub fn init() -> Self {
-        Self {
-            hit_points: BoundedFloat::new_zero_min(100.0, 100.0).unwrap(),
-            body_temperature: 310.15,
-            inventory: Inventory::new(10000.0),
-        }
+    /// The player's speed of crafting
+    pub fn craft_speed(&self) -> f64 {
+        self.craft_speed
+    }
+
+    /// The player's speed of uncrafting
+    pub fn uncraft_speed(&self) -> f64 {
+        self.uncraft_speed
     }
 
     /// Deal `hp` damage to the player.
@@ -83,6 +100,8 @@ impl Player {
                         products: &recipe.products,
                         recipe_time: recipe.craft_time,
                         time_remaining: recipe.craft_time,
+                        craft_speed: self.craft_speed(),
+                        uncraft_speed: self.uncraft_speed(),
                     });
                 }
                 Err(InventoryError::NotEnoughVec(e)) => {
