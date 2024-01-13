@@ -3,9 +3,6 @@ use enum_as_inner::EnumAsInner;
 use super::*;
 
 /// In order to complete the craft immediately, call [`complete()`](Self::complete()), and it will tick the fire accordingly. If you have limited time to await the craft, call [`progress()`](Self::progress()) to progress the craft by a specified amount of time.
-///
-/// # Development
-/// * Allow for canceling of the craft to return the ingredients back to the player (impossible with the current implementation).
 #[derive(Clone, Debug)]
 pub struct InProgressCraft {
     /// The ingredients of the recipe
@@ -50,7 +47,7 @@ impl InProgressCraft {
         }
     }
 
-    /// Cancel the craft and return its ingredients to be given back to the player. Uncrafts are 4x as fast as crafts. This will be even faster if the player was early in the craft. This method drops its receiver.
+    /// Reverse and cancel the craft and return its ingredients to be given back to the player. Uncrafts are 4x as fast as crafts. This will be even faster if the player was early in the craft. This method drops its receiver.
     ///
     /// # Returns
     /// * [`Ok`] - The uncraft successfully completed. Contained are the ingredients.
@@ -60,7 +57,7 @@ impl InProgressCraft {
         Ok(self.ingredients)
     }
 
-    /// Progress the craft backwards (uncraft) by `time` time, "polling" it. This method will take only the time necessary to finish the uncraft, and not the entire amount of time specified. Because this method takes ownership of its receiver, you will have to use its returned [`CraftResult`] exclusively.
+    /// Reverse a craft (uncraft) by `time` time, "polling" it. This method will take only the time necessary to finish the uncraft, and not the entire amount of time specified. Because this method takes ownership of its receiver, you will have to use its returned [`CraftResult`] exclusively.
     ///
     /// # Returns
     /// * [`Ok`]
@@ -86,8 +83,9 @@ impl InProgressCraft {
         }
     }
 
+    /// Calculate the time necessary to reverse craft a [`Self`]. Uncrafting is 4x as fast as crafting.
     fn uncraft_time(&self) -> f64 {
-        (self.recipe_time - self.time_remaining) / 4.0 // Un-craft 4x as fast
+        (self.recipe_time - self.time_remaining) / 4.0
     }
 }
 
