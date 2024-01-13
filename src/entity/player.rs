@@ -79,6 +79,7 @@ impl Player {
                     return Ok(InProgressCraft {
                         ingredients: &recipe.ingredients,
                         products: &recipe.products,
+                        recipe_time: recipe.craft_time,
                         time_remaining: recipe.craft_time,
                     });
                 }
