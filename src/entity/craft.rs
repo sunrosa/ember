@@ -7,19 +7,19 @@ use super::*;
 /// # Development
 /// * Allow for canceling of the craft to return the ingredients back to the player (impossible with the current implementation).
 #[derive(Clone, Debug)]
-pub struct InProgressCraft<'a> {
-    pub(super) products: &'a Vec<(ItemId, u32)>,
+pub struct InProgressCraft {
+    pub(super) products: &'static Vec<(ItemId, u32)>,
     pub(super) time_remaining: f64,
 }
 
 // This really, really reminds me of Futures lol. I forgot what this process is called. "Make invalid states unrepresentable" or some shit. I think it's the Finite-State-Machine pattern. I like it a fucking hell of a lot though :3
-impl<'a> InProgressCraft<'a> {
+impl InProgressCraft {
     /// Complete the craft immediately, ticking the fire for however long the craft has remaining, returning the products. This method takes ownership and destroys its receiver.
     ///
     /// # Returns
     /// * [`Ok`] - The craft successfully completed.
     /// * [`Err`]\([`BurntOut`](FireError::BurntOut)) - The fire burnt out while crafting.
-    pub fn complete(self, fire: &mut Fire) -> Result<&'a Vec<(ItemId, u32)>, FireError> {
+    pub fn complete(self, fire: &mut Fire) -> Result<&'static Vec<(ItemId, u32)>, FireError> {
         fire.tick_time(self.time_remaining)?;
         Ok(self.products)
     }
@@ -31,7 +31,7 @@ impl<'a> InProgressCraft<'a> {
     ///     * [`Ready`](CraftResult::Ready) - The craft has completed.
     ///     * [`Pending`](CraftResult::Pending) - There is still more time needed to complete the task.
     /// * [`Err`]\([`BurntOut`](FireError::BurntOut)) - The fire burnt out while crafting.
-    pub fn progress(mut self, fire: &mut Fire, time: f64) -> Result<CraftResult<'a>, FireError> {
+    pub fn progress(mut self, fire: &mut Fire, time: f64) -> Result<CraftResult, FireError> {
         if time >= self.time_remaining {
             // Ready
             fire.tick_time(self.time_remaining)?;
@@ -47,11 +47,11 @@ impl<'a> InProgressCraft<'a> {
 
 /// The result of "polling" a crafting process
 #[derive(Debug, Clone, EnumAsInner)]
-pub enum CraftResult<'a> {
+pub enum CraftResult {
     /// The craft is ready. Contained are the item products of the recipe.
-    Ready(&'a Vec<(ItemId, u32)>),
+    Ready(&'static Vec<(ItemId, u32)>),
     /// The craft is still pending. Contained is the in-progress craft to be "polled" again.
-    Pending(InProgressCraft<'a>),
+    Pending(InProgressCraft),
 }
 
 /// Result of checking to see if there are enough items in an inventory to craft a recipe
