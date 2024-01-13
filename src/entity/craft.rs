@@ -82,7 +82,7 @@ impl InProgressCraft {
     ///     * [`Ready`](CraftResult::Ready) - The uncraft has completed. Contained are the ingredients.
     ///     * [`Pending`](CraftResult::Pending) - There is still more time needed to complete the uncraft.
     /// * [`Err`]\([`BurntOut`](FireError::BurntOut)) - The fire burnt out while crafting.
-    pub fn progress_cancel(
+    pub fn reverse_progress(
         mut self,
         fire: &mut Fire,
         max_time: f64,
@@ -305,7 +305,7 @@ mod test {
         assert_eq!(fire.time_alive(), 50.0);
 
         craft = craft
-            .progress_cancel(&mut fire, 10.0)
+            .reverse_progress(&mut fire, 10.0)
             .unwrap()
             .into_pending()
             .unwrap();
@@ -316,5 +316,32 @@ mod test {
 
         assert_eq!(fire.time_alive(), 63.0);
         assert_eq!(*ingredients, vec![(ItemId::SmallStick, 3)]);
+    }
+
+    #[test]
+    fn inventory_cost() {
+        let (mut fire, mut player) = init();
+        player
+            .inventory_mut()
+            .insert(ItemId::SmallStick, 3)
+            .unwrap();
+        let products = player
+            .craft(ItemId::SmallBundle)
+            .unwrap()
+            .complete(&mut fire)
+            .unwrap();
+
+        assert_eq!(fire.time_alive(), 100.0);
+        assert_eq!(*products, vec![(ItemId::SmallBundle, 1)]);
+
+        let missing_ingredients = player.craft(ItemId::SmallBundle);
+
+        assert_eq!(
+            missing_ingredients,
+            Err(CraftError::MissingIngredients(vec![(
+                ItemId::SmallStick,
+                3
+            )]))
+        );
     }
 }
