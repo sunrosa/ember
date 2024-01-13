@@ -10,11 +10,13 @@ use super::*;
 pub struct Player {
     /// The player's hit points
     hit_points: BoundedFloat,
-    /// Body temperature in degrees kelvin
+    /// Body temperature in degrees kelvin. `310.15` is default.
     body_temperature: f64,
     /// The player's inventory
     inventory: Inventory,
+    /// The speed of player crafting. Higher is faster. `1.0` is default.
     craft_speed: f64,
+    /// The speed of player uncrafting. Higher is faster. `4.0` is default.
     uncraft_speed: f64,
 }
 
@@ -95,14 +97,7 @@ impl Player {
         for recipe in compatible_recipes {
             match self.inventory.take_vec_if_enough(&recipe.ingredients) {
                 Ok(_) => {
-                    return Ok(InProgressCraft {
-                        ingredients: &recipe.ingredients,
-                        products: &recipe.products,
-                        recipe_time: recipe.craft_time,
-                        time_remaining: recipe.craft_time,
-                        craft_speed: self.craft_speed(),
-                        uncraft_speed: self.uncraft_speed(),
-                    });
+                    return Ok(InProgressCraft::new(&recipe, self.craft_speed, self.uncraft_speed));
                 }
                 Err(InventoryError::NotEnoughVec(e)) => {
                     missing_items = e;

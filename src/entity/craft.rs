@@ -6,21 +6,32 @@ use super::*;
 #[derive(Clone, Debug, PartialEq)]
 pub struct InProgressCraft {
     /// The ingredients of the recipe
-    pub(super) ingredients: &'static Vec<(ItemId, u32)>,
+    ingredients: &'static Vec<(ItemId, u32)>,
     /// The products of the recipe
-    pub(super) products: &'static Vec<(ItemId, u32)>,
+    products: &'static Vec<(ItemId, u32)>,
     /// The total time the recipe takes
-    pub(super) recipe_time: f64,
+    recipe_time: f64,
     /// The amount of time that remains until the recipe is completed
-    pub(super) time_remaining: f64,
+    time_remaining: f64,
     /// The coefficient of craft speed. Higher is faster.
-    pub(super) craft_speed: f64,
+    craft_speed: f64,
     /// The coefficient of uncraft speed Higher is faster.
-    pub(super) uncraft_speed: f64,
+    uncraft_speed: f64,
 }
 
 // This really, really reminds me of Futures lol. I forgot what this process is called. "Make invalid states unrepresentable" or some shit. I think it's the Finite-State-Machine pattern. I like it a fucking hell of a lot though :3
 impl InProgressCraft {
+    pub fn new(recipe: &'static Recipe, craft_speed: f64, uncraft_speed: f64) -> Self {
+        Self {
+            ingredients: &recipe.ingredients,
+            products: &recipe.products,
+            recipe_time: recipe.craft_time,
+            time_remaining: recipe.craft_time,
+            craft_speed,
+            uncraft_speed,
+        }
+    }
+
     /// Finish off the craft now, ticking the fire for however long the craft has remaining, returning the products. This method takes ownership and drops its receiver.
     ///
     /// # Returns
